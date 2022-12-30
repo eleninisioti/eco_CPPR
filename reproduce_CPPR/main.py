@@ -73,36 +73,7 @@ def test(params, nb_agents, ind_best, SX, SY, key, model, project_dir, train_gen
             vid.close()
 
 
-def stable_no_training():
-    SX = 640
-    SY = 1520
-    nb_agents = 200
-    env = Gridworld(1000, nb_agents, SX, SY, climate_type="constant")
-    key = jax.random.PRNGKey(np.random.randint(42))
-    next_key, key = random.split(key)
-    state = env.reset(next_key)
 
-    plt.figure(figsize=(8, 6), dpi=160)
-
-    vid = True
-    project_dir = "projects/stable_no_training"
-    if not os.path.exists(project_dir):
-        os.makedirs(project_dir)
-    if (vid):
-        with VideoWriter(project_dir + "/out_random.mp4", 20.0) as vid:
-
-            for i in range(2000):
-                next_key, key = random.split(key)
-                actions = jax.nn.one_hot([4]*nb_agents, 5)
-                cur_state, state, reward, done = env.step(state, actions)
-                # print(state.agents.seeds)
-                rgb_im = state.state[:, :, :3]
-                rgb_im = np.repeat(rgb_im, 5, axis=0)
-                rgb_im = np.repeat(rgb_im, 5, axis=1)
-                vid.add(rgb_im)
-
-                if i%10==0:
-                    print("generation ", str(i))
 
 def stable_no_training_small():
     SX = int(640/4)
@@ -440,11 +411,11 @@ def stable_training(fitness_criterion, selection_type):
 
 if __name__ == "__main__":
     #stable_no_training()
-    stable_no_training_small()
+    #stable_no_training_small()
     rewards = "reward"
     selection_type = "gautier"
     print(selection_type, rewards)
-    #stable_training(rewards, selection_type)
+    stable_training(rewards, selection_type)
 
     #stable_training("staminas", "eleni")
     #static_world(100)

@@ -225,7 +225,7 @@ class Gridworld(VectorizedTask):
             # probability=probability*jnp.clip(grid[:,:,3]/2000-grid[:,:,2],0,1)
             next_key, key = random.split(state.key)
             # grid=grid.at[:,:,1].add(random.bernoulli(next_key, num_neighbs))
-            #grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs))
+            grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs))
 
             ### planting seeds
             rewards = rewards - action_int[:, 4]
