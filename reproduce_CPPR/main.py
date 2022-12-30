@@ -21,7 +21,8 @@ def test(params, nb_agents, ind_best, SX, SY, key, model, project_dir, train_gen
     SY=150
     params_b = params[ind_best[-nb_agents:]]
     rand_move = np.random.randint(4)
-    print("random move in train_gen ", str(train_gen), str(rand_move))
+    moves = {0: "left", 1: "down", 2: "up", 3: "right"}
+    print("random move in train_gen ", str(train_gen), str(moves[rand_move]))
     env = Gridworld(100, nb_agents, SX, SY)
 
     next_key, key = random.split(key)
@@ -29,7 +30,7 @@ def test(params, nb_agents, ind_best, SX, SY, key, model, project_dir, train_gen
 
     policy_states = model.reset(state)
     eval_trials = 3
-    test_dir = project_dir + "/evaluation/train_" + str(train_gen)
+    test_dir = project_dir + "/evaluation/train_" + str(train_gen) + "_move_" + moves[rand_move]
     if not os.path.exists(test_dir):
         os.makedirs(test_dir)
 
@@ -41,7 +42,6 @@ def test(params, nb_agents, ind_best, SX, SY, key, model, project_dir, train_gen
         with VideoWriter( test_dir + "/trial_" + str(trial) + ".mp4", 4.0) as vid:
 
             for i in range(75):
-                print(str(i))
                 next_key, key = random.split(key)
                 actions_logit, policy_states = model.get_actions(state, params_b, policy_states)
                 if i < 20:
@@ -76,7 +76,7 @@ def test(params, nb_agents, ind_best, SX, SY, key, model, project_dir, train_gen
 def stable_no_training():
     SX = 640
     SY = 1520
-    nb_agents = 400
+    nb_agents = 200
     env = Gridworld(1000, nb_agents, SX, SY, climate_type="constant")
     key = jax.random.PRNGKey(np.random.randint(42))
     next_key, key = random.split(key)
@@ -108,7 +108,7 @@ def stable_no_training_small():
     SX = int(640/4)
     SY = int(1520/4)
     nb_agents = 200
-    num_train_gens = 10
+    num_train_gens = 500
     gen_length = 75
     env = Gridworld(num_train_gens*gen_length+1, nb_agents, SX, SY, climate_type="constant")
     key = jax.random.PRNGKey(np.random.randint(42))
@@ -327,8 +327,8 @@ def stable_training(fitness_criterion, selection_type):
         return accumulated_rewards, state, accumulated_staminas
 
 
-    SX = int(640/4)
-    SY = int(1520/4)
+    SX = int(640)
+    SY = int(1520)
     nb_agents = 200
     num_train_gens = 700
     gen_length = 75
@@ -436,134 +436,15 @@ def stable_training(fitness_criterion, selection_type):
         plt.savefig(project_dir + "/equality.png")
         plt.clf()
 
-def static_world(nb_agents):
-
-
-    SX = int(640/4)
-    SY = int(1520/4)
-    #nb_agents = 200
-    num_train_gens = 5000
-    gen_length = 75
-    env = Gridworld(num_train_gens*gen_length+1, nb_agents, SX, SY, climate_type="constant")
-    key = jax.random.PRNGKey(np.random.randint(42))
-    next_key, key = random.split(key)
-    state = env.reset(next_key)
-    fitness_criterion = "rewards"
-    selection_type = "eleni"
-
-    def rollout_base(params, key, state, iter=100):
-        next_key, key = random.split(key)
-        state = env.reset(next_key)
-        policy_states = model.reset(state)
-        accumulated_rewards = jnp.zeros(params.shape[0])
-        accumulated_staminas = jnp.zeros(params.shape[0])
-        for i in range(iter):
-            next_key, key = random.split(key)
-            actions_logit, policy_states = model.get_actions(state, params, policy_states)
-            actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit, axis=-1), 5)
-            cur_state, state, reward, done = env.step(state, actions)
-
-            accumulated_rewards = accumulated_rewards + reward
-            accumulated_staminas = accumulated_staminas * 0.8 + reward
-            accumulated_staminas = np.where(accumulated_staminas < 0.4, 0, accumulated_staminas)
-
-        return accumulated_rewards, state, accumulated_staminas
-
-    plt.figure(figsize=(8, 6), dpi=160)
-
-    vid = True
-    project_dir = "projects/static_world_agents_" + str(nb_agents) + "_select_" + selection_type
-    if not os.path.exists(project_dir):
-        os.makedirs(project_dir)
-
-    model = MetaRnnPolicy_b(input_dim=6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=128, output_dim=4)
-
-    params = jax.random.uniform(
-        next_key,
-        (nb_agents, model.num_params,),
-        minval=-0.1,
-        maxval=0.1,
-    )
-
-    mean_rewards = []
-    mean_staminas = []
-    gini_coeffs = []
-    if (vid):
-        try:
-            vid = VideoWriter(project_dir + "/training_0.mp4", 20.0)
-
-            for iter in range(num_train_gens):
-
-                accumulated_rewards, state, accumulated_staminas = rollout_base(params, key, state, iter=gen_length)
-                gini_coeffs.append(gini_coefficient(accumulated_rewards))
-
-                mean_rewards.append(jnp.mean(accumulated_rewards))
-                mean_staminas.append(jnp.mean(accumulated_staminas))
-                if fitness_criterion == "stamina":
-                    accumulated_rewards = accumulated_staminas
-
-                ind_best = jnp.argsort(accumulated_rewards)
-
-                if (iter % 10 == 0):
-                    print("generation ", str(iter), str(mean_rewards[-1]))
-                    print(jnp.mean(accumulated_rewards), accumulated_rewards[ind_best[-3:]],
-                          accumulated_rewards[ind_best[:3]])
-
-                params = selection(params, nb_agents, key, ind_best, selection_type=selection_type)
-
-                rgb_im = state.state[:, :, :3]
-                rgb_im = np.repeat(rgb_im, 5, axis=0)
-                rgb_im = np.repeat(rgb_im, 5, axis=1)
-                vid.add(rgb_im)
-
-                if (iter % 50 == 0):
-                    vid.close()
-                    vid = VideoWriter(project_dir + "/training_" + str(iter) + ".mp4", 20.0)
-                    with open(project_dir + "/data_" + str(iter) + ".pkl", "wb") as f:
-                        pickle.dump([mean_rewards, mean_staminas, gini_coeffs], file=f)
-
-                    plt.plot(range(len(mean_rewards)), mean_rewards)
-                    plt.ylabel("reward")
-                    plt.savefig(project_dir + "/rewards_" + str(iter) + ".png")
-                    plt.clf()
-
-                    plt.plot(range(len(mean_staminas)), mean_staminas)
-                    plt.ylabel("reward")
-                    plt.savefig(project_dir + "/staminas_" + str(iter) + ".png")
-                    plt.clf()
-
-                    plt.plot(range(len(gini_coeffs)), gini_coeffs)
-                    plt.ylabel("Equalilty")
-                    plt.savefig(project_dir + "/equality_" + str(iter) + ".png")
-                    plt.clf()
-
-        except KeyboardInterrupt:
-            print("running aborted")
-            vid.close()
-
-        with open(project_dir + "/data.pkl", "wb") as f:
-            pickle.dump([mean_rewards, mean_staminas, gini_coeffs], file=f)
-
-        plt.plot(range(len(mean_rewards)), mean_rewards)
-        plt.ylabel("reward")
-        plt.savefig(project_dir + "/rewards.png")
-        plt.clf()
-
-        plt.plot(range(len(mean_staminas)), mean_staminas)
-        plt.ylabel("reward")
-        plt.savefig(project_dir + "/staminas.png")
-        plt.clf()
-
-        plt.plot(range(len(gini_coeffs)), gini_coeffs)
-        plt.ylabel("Equalilty")
-        plt.savefig(project_dir + "/equality.png")
-        plt.clf()
 
 
 if __name__ == "__main__":
     #stable_no_training()
-    #stable_no_training_small()
-    #stable_training("reward", "gautier")
+    stable_no_training_small()
+    rewards = "reward"
+    selection_type = "gautier"
+    print(selection_type, rewards)
+    #stable_training(rewards, selection_type)
 
-    stable_training("staminas", "eleni")
+    #stable_training("staminas", "eleni")
     #static_world(100)
