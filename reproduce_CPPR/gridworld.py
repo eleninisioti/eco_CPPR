@@ -61,8 +61,7 @@ import jax.numpy as jnp
 from jax import random
 from flax.struct import dataclass
 
-SIZE_GRID = 4
-AGENT_VIEW = 3
+AGENT_VIEW =3
 
 
 @dataclass
@@ -126,6 +125,7 @@ class Gridworld(VectorizedTask):
     def __init__(self,
                  max_steps: int = 1000,
                  nb_agents: int = 100,
+                 init_food: int=100,
                  SX=300,
                  SY=100,
                  climate_type="noisy",
@@ -151,9 +151,9 @@ class Gridworld(VectorizedTask):
             next_key, key = random.split(key)
             agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
 
-            pos_food_x = random.randint(next_key, ( int(nb_agents/10),), 1, SX - 1)
+            pos_food_x = random.randint(next_key, ( init_food,), 1, SX - 1)
             next_key, key = random.split(key)
-            pos_food_y = random.randint(next_key, ( int(nb_agents/10),), 1, SY - 1)
+            pos_food_y = random.randint(next_key, ( init_food,), 1, SY - 1)
             next_key, key = random.split(key)
             grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, self.climate_type,
                                      self.climate_var)
@@ -168,11 +168,12 @@ class Gridworld(VectorizedTask):
             next_key, key = random.split(key)
             agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
 
-            pos_food_x = random.randint(next_key, (8 * nb_agents,), 1, SX - 1)
+            pos_food_x = random.randint(next_key, (init_food,), 1, SX - 1)
             next_key, key = random.split(key)
-            pos_food_y = random.randint(next_key, (8 * nb_agents,), 1, SY - 1)
+            pos_food_y = random.randint(next_key, (init_food,), 1, SY - 1)
             next_key, key = random.split(key)
-            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y)
+            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, self.climate_type,
+                                     self.climate_var)
             grid = grid.at[:, :, 1].set(food)
 
             return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 5)),
@@ -204,28 +205,50 @@ class Gridworld(VectorizedTask):
             seeds = state.agents.seeds + jnp.int8((grid[posx, posy, 1] > 0))
 
             rewards = (grid[posx, posy, 1] > 0) * (1 / (grid[posx, posy, 0] + 1e-10))
+            #rewards = (grid[posx, posy, 1] > 0) * (grid[posx, posy, 0])
+
             grid = grid.at[posx, posy, 1].set(0)
 
             # regrow
-            num_neighbs = jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]]),
+            num_neighbs = jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]),
                                                       mode="same")
             scale = grid[:, :, 3]
             scale_constant = 10000
             num_neighbs = jnp.where(num_neighbs == 0, 0, num_neighbs)
-            num_neighbs = jnp.where(num_neighbs == 1, 0.01/10, num_neighbs)
+            num_neighbs = jnp.where(num_neighbs == 1, 0.01/50, num_neighbs)
             num_neighbs = jnp.where(num_neighbs == 2, 0.01/scale_constant, num_neighbs)
             num_neighbs = jnp.where(num_neighbs == 3, 0.05/scale_constant, num_neighbs)
-            num_neighbs = jnp.where(num_neighbs == 4, 0.05/scale_constant, num_neighbs)
-            num_neighbs = jnp.where(num_neighbs > 4, 0.01/scale_constant, num_neighbs)
-            num_neighbs = jnp.where(num_neighbs > 6, -0.05/scale_constant, num_neighbs)
+            #num_neighbs = jnp.where(num_neighbs == 4, 0.05/scale_constant, num_neighbs)
+            num_neighbs = jnp.where(num_neighbs > 3, 0, num_neighbs)
             #print(jnp.sum(num_neighbs))
             num_neighbs = jnp.multiply(num_neighbs, scale)
+            next_key, key = random.split(state.key)
+            grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs))
+
+
+            # cells with too many resources around them die
+            num_neighbs_subtract= jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]),
+                                                      mode="same")
+            scale = grid[:, :, 3]
+            scale_constant = 1000
+            num_neighbs_subtract = jnp.where(num_neighbs_subtract > 3, 0.01 / scale_constant, num_neighbs_subtract)
+            num_neighbs_subtract = jnp.where(num_neighbs_subtract <= 3, 0, num_neighbs_subtract)
+            num_neighbs_subtract = jnp.multiply(num_neighbs_subtract, scale)
+            grid = grid.at[:, :, 1].add(-1*random.bernoulli(next_key, num_neighbs_subtract))
+
+            # resources die after some time
+            discount = 0.0001
+            alive_cells = jnp.where(grid[:,:,1]>0, discount, 0)
+            grid = grid.at[:, :, 1].add(-1*random.bernoulli(next_key, alive_cells))
+
+
+
             #print("after", jnp.sum(num_neighbs))
             # modulate the probability with the climate value
             # probability=probability*jnp.clip(grid[:,:,3]/2000-grid[:,:,2],0,1)
-            next_key, key = random.split(state.key)
-            # grid=grid.at[:,:,1].add(random.bernoulli(next_key, num_neighbs))
-            grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs))
+            #grid=grid.at[:,:,1].add(random.bernoulli(next_key, num_neighbs))
+            #grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs_subtract))
+
 
             ### planting seeds
             rewards = rewards - action_int[:, 4]

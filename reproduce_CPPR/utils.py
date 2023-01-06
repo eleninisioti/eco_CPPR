@@ -3,7 +3,23 @@ from moviepy.video.io.ffmpeg_writer import FFMPEG_VideoWriter
 from IPython.display import HTML, display, clear_output
 import numpy as np
 import random
+from moviepy.editor import *
 
+
+def merge_videos(directory, num_gens):
+  import os
+  gens = range(0, num_gens, 10)
+  L =[]
+
+  for gen in gens:
+    file_path = "projects/" + directory + "/training_" + str(gen) + ".mp4"
+    video = VideoFileClip(file_path)
+    L.append(video)
+
+
+
+  final_clip = concatenate_videoclips(L)
+  final_clip.to_videofile("projects/" + directory + "/total_training.mp4", fps=24, remove_temp=False)
 
 def gini_coefficient(rewards):
   coeff = 0
@@ -43,3 +59,7 @@ class VideoWriter:
       self.close()
       fn = self.params['filename']
       display(mvp.ipython_display(fn, **kw))
+
+
+if __name__ == "__main__":
+  merge_videos("5_1_2023/nofollow_rewardgautier", 190)

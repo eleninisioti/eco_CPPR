@@ -19,6 +19,81 @@ from evojax.policy.base import PolicyState
 from evojax.util import create_logger
 from evojax.util import get_params_format_fn
 
+
+class Dense(nn.Module):
+    output_size: int
+    out_fn: str
+
+    def setup(self):
+
+        self._output_proj = nn.Dense(self.output_size)
+        self._dense = nn.Dense(64)
+        self._dense2 = nn.Dense(64)
+
+    def __call__(self, inputs: jnp.ndarray):
+
+        out = self._dense(inputs)
+        out = nn.relu(out)
+        out = self._dense2(out)
+        out = nn.relu(out)
+        out = self._output_proj(out)
+
+        if self.out_fn == 'tanh':
+            out = nn.tanh(out)
+        elif self.out_fn == 'softmax':
+            out = nn.softmax(out, axis=-1)
+        else:
+            if (self.out_fn != 'categorical'):
+                raise ValueError(
+                    'Unsupported output activation: {}'.format(self.out_fn))
+        return out
+
+
+@dataclass
+class DensePolicyState(PolicyState):
+    keys: jnp.array
+
+
+class DensePolicy_b(PolicyNetwork):
+
+    def __init__(self, input_dim: int,
+                 hidden_dim: int,
+                 output_dim: int,
+                 output_act_fn: str = "categorical",
+                 logger: logging.Logger = None):
+
+        if logger is None:
+            self._logger = create_logger(name='DenseNolicy')
+        else:
+            self._logger = logger
+        model = Dense(output_dim, out_fn=output_act_fn)
+        self.params = model.init(jax.random.PRNGKey(0), jnp.zeros([input_dim]))
+
+        self.num_params, format_params_fn = get_params_format_fn(self.params)
+        self._logger.info('DnsPolicy.num_params = {}'.format(self.num_params))
+        self.hidden_dim = hidden_dim
+        self._format_params_fn = (jax.vmap(format_params_fn))
+        #self._forward_fn = jax.jit(jax.vmap(jax.vmap(model.apply), in_axes=(None, 0)))
+        self._forward_fn = jax.jit(jax.vmap(model.apply))
+
+    def reset(self, states: TaskState) -> PolicyState:
+        """Reset the policy.
+        Args:
+            TaskState - Initial observations.
+        Returns:
+            PolicyState. Policy internal states.
+        """
+        keys = jax.random.split(jax.random.PRNGKey(0), states.obs.shape[0])
+
+        return DensePolicyState(keys=keys)
+
+    def get_actions(self, t_states: TaskState, params: jnp.ndarray, p_states: PolicyState):
+        params = self._format_params_fn(params)
+        inp = jnp.concatenate([t_states.obs, t_states.last_actions, t_states.rewards], axis=-1)
+
+        out = self._forward_fn(params, inp)
+        return out, DensePolicyState(keys=p_states.keys)
+
 class MetaRNN(nn.Module):
     output_size :int
     out_fn :str
