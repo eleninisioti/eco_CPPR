@@ -62,4 +62,4 @@ class VideoWriter:
 
 
 if __name__ == "__main__":
-  merge_videos("5_1_2023/nofollow_rewardgautier", 190)
+  merge_videos("9_1_2023/follow_rewardgautier_genlen_75_policy_metarnn_climate_constant_reload_False_smaller_True_grid_True", 1800)

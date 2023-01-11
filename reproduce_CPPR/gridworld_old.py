@@ -129,8 +129,6 @@ def get_init_state_fn(key: jnp.ndarray, SX, SY, posx, posy, pos_food_x, pos_food
         print("scale", scale)
         #scale=-1
         grid = grid.at[:, :, 3].set(new_array + scale)
-    elif climate_type == "no-niches":
-        grid = grid.at[:, :, 3].set(1.0)
 
     # grid=grid.at[:,:,3].set(5)
 
@@ -237,9 +235,9 @@ class Gridworld(VectorizedTask):
             num_neighbs = jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]),
                                                       mode="same")
             scale = grid[:, :, 3]
-            scale_constant = 0.001
+            scale_constant = 100
             num_neighbs = jnp.where(num_neighbs == 0, 0, num_neighbs)
-            num_neighbs = jnp.where(num_neighbs == 1, 0.01/5, num_neighbs)
+            num_neighbs = jnp.where(num_neighbs == 1, 0.01/10, num_neighbs)
             num_neighbs = jnp.where(num_neighbs == 2, 0.01/scale_constant, num_neighbs)
             num_neighbs = jnp.where(num_neighbs == 3, 0.05/scale_constant, num_neighbs)
             #num_neighbs = jnp.where(num_neighbs == 4, 0.05/scale_constant, num_neighbs)
@@ -255,7 +253,7 @@ class Gridworld(VectorizedTask):
             num_neighbs_subtract= jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]),
                                                       mode="same")
             scale = grid[:, :, 3]
-            scale_constant = 1
+            scale_constant = 10000
             num_neighbs_subtract = jnp.where(num_neighbs_subtract > 3, 0.01 / scale_constant, num_neighbs_subtract)
             num_neighbs_subtract = jnp.where(num_neighbs_subtract <= 3, 0, num_neighbs_subtract)
             num_neighbs_subtract = jnp.multiply(num_neighbs_subtract, scale)
@@ -263,7 +261,7 @@ class Gridworld(VectorizedTask):
 
             # resources die after some time
             #discount = 0.0001
-            discount = 0.0
+            discount = 0.0001
             alive_cells = jnp.where(grid[:,:,1]>0, discount, 0)
             grid = grid.at[:, :, 1].add(-1*random.bernoulli(next_key, alive_cells))
 
