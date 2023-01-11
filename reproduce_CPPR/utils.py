@@ -1,10 +1,17 @@
+"""
 import moviepy.editor as mvp
 from moviepy.video.io.ffmpeg_writer import FFMPEG_VideoWriter
 from IPython.display import HTML, display, clear_output
 import numpy as np
 import random
 from moviepy.editor import *
-
+"""
+import os
+os.environ['FFMPEG_BINARY'] = 'ffmpeg'
+import moviepy.editor as mvp
+from moviepy.video.io.ffmpeg_writer import FFMPEG_VideoWriter
+from IPython.display import HTML, display, clear_output
+import numpy as np
 
 def merge_videos(directory, num_gens):
   import os
