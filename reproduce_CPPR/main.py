@@ -12,6 +12,7 @@ from flax.struct import dataclass
 import matplotlib.pyplot as plt
 import numpy as np
 from reproduce_CPPR.agent import MetaRnnPolicy_b, DensePolicy_b
+from reproduce_CPPR.agent_pretrained import MetaRnnPolicy_bcppr
 import pickle
 import datetime
 from evojax.util import load_model
@@ -34,7 +35,9 @@ def test(params, nb_agents, ind_best,  SX, SY, key, model, project_dir, train_ge
     moves = {0: "left", 1: "down", 2: "up", 3: "right"}
     print("random move in train_gen ", str(train_gen), str(moves[rand_move]))
     init_food = 200
-    env = Gridworld(100, nb_test_agents, init_food, SX, SY, climate_type="no-niches")
+    #env = Gridworld(100, nb_test_agents, init_food, SX, SY, climate_type="no-niches")
+    env = Gridworld(max_steps=200,SX=10,SY=20)
+
 
     next_key, key = random.split(key)
     state = env.reset(next_key)
@@ -189,10 +192,13 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late, 
         # which agents will have one child
         two_offspring = [agent for agent, stamina in enumerate(staminas_late) if stamina > 0 and staminas[agent]>0]
         nojaxrandom.shuffle(two_offspring)
+        print("two offspring ", len(two_offspring))
 
         # which will have two
         one_offspring = [agent for agent, stamina in enumerate(staminas) if stamina > 0]
         nojaxrandom.shuffle(one_offspring)
+        print("one offspring ", len(one_offspring))
+
 
 
         new_params = jnp.zeros((params.shape[0], params.shape[1]))
@@ -201,7 +207,8 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late, 
         noffsprings = 0
         for agent in two_offspring:
             if noffsprings <= params.shape[0]:
-                temp = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1],))
+                mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1]-5792,))
+                temp = jnp.concatenate(params[agent, 5792:], mutated)
 
                 new_params = new_params.at[noffsprings].set(params[agent] + temp)
                 new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
@@ -209,7 +216,8 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late, 
 
             noffsprings += 1
             if noffsprings <= params.shape[0]:
-                temp = mutation_prob * jax.random.normal(next_key1, (new_params.shape[1],))
+                mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1]-5792,))
+                temp = jnp.concatenate(params[agent, 5792:], mutated)
 
                 new_params = new_params.at[noffsprings].set(params[agent] + temp)
                 new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
@@ -218,7 +226,8 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late, 
 
         for agent in one_offspring:
             if noffsprings <= params.shape[0]:
-                temp = mutation_prob * jax.random.normal(next_key1, (new_params.shape[1],))
+                mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1]-5792,))
+                temp = jnp.concatenate(params[agent, 5792:], mutated)
 
                 new_params = new_params.at[noffsprings].set(params[agent] + temp)
                 new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
@@ -227,9 +236,12 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late, 
 
         if noffsprings < min_agents:
             not_reproduced = [el for el in list(range(nb_agents)) if el not in two_offspring and el not in one_offspring]
+            not_reproduced = list(range(nb_agents))
             random_agents = nojaxrandom.choices(not_reproduced, k=(min_agents-noffsprings))
+            print("adding random agents", len(random_agents))
             for agent in random_agents:
-                temp = mutation_prob * jax.random.normal(next_key1, (new_params.shape[1],))
+                mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1]-5792,))
+                temp = jnp.concatenate(params[agent, 5792:], mutated)
 
                 new_params = new_params.at[noffsprings].set(params[agent] + temp)
                 new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
@@ -237,8 +249,8 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late, 
 
 
 
-
-
+        temp = jnp.sum(new_params, axis=0)
+        print("monitoring weights", jnp.mean(jnp.sum(new_params, axis=0)))
 
 
     elif selection_type == "Gautier":
@@ -305,12 +317,13 @@ def training_reset(fitness_criterion, selection_type):
     num_train_gens = 200
     gen_length = 750
     init_food = 200
-    policy = "metarnn"
+    policy_name = "metacnnrnn"
     climate = "no-niches"
-    reload = False
-    smaller = False
-    mutation_prob = 0.02
-    env = Gridworld(num_train_gens * gen_length + 1, nb_agents, init_food, SX, SY, climate_type=climate)
+    reload = True
+    smaller = True
+    mutation_prob = 0.2
+    #env = Gridworld(num_train_gens * gen_length + 1, nb_agents, init_food, SX, SY)
+    env = Gridworld(max_steps=200,SX=10,SY=20)
     key = jax.random.PRNGKey(np.random.randint(42))
     next_key, key = random.split(key)
     state = env.reset(next_key)
@@ -321,24 +334,40 @@ def training_reset(fitness_criterion, selection_type):
     vid = True
     now = datetime.datetime.now()
     today = str(now.day) + "_" + str(now.month) + "_" + str(now.year)
-    project_dir = "projects/" + today + "/staminav2_follow_" + fitness_criterion + selection_type + "_genlen_" + \
-                  str(gen_length) + "_policy_" + policy + "_climate_" + climate + "_reload_" + str(
+    project_dir = "projects/" + today + "/staminav1_follow_" + fitness_criterion + selection_type + "_genlen_" + \
+                  str(gen_length) + "_policy_" + policy_name + "_climate_" + climate + "_reload_" + str(
         reload) + "_smaller_" + str(smaller) + "_grid_" + str(smaller_grid) + "_mutate_" + str(mutation_prob)
     print(project_dir)
     if not os.path.exists(project_dir):
         os.makedirs(project_dir)
 
-    input_dim = 6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3
+
     if smaller:
         hidden_dim = 16
     else:
         hidden_dim = 128
-    if policy == "metarnn":
+    output_dim = 4
+    input_dim = 6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3
+    print(input_dim + hidden_dim + output_dim)
+    if policy_name == "metarnn":
         model = MetaRnnPolicy_b(input_dim=6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=hidden_dim, output_dim=4)
         # model = MetaRnnPolicy_b(input_dim=        5 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=128, output_dim=4)
 
+    elif policy_name == "metacnnrnn":
+        env = Gridworld(max_steps=200,SX=10,SY=20)
+
+        model = MetaRnnPolicy_bcppr(
+            input_dim=env.obs_shape[0] + env.act_shape[0] + 1,
+            hidden_dim=16,
+            hidden_layers=[],
+            output_dim=env.act_shape[0],
+            encoder=True,
+            encoder_layers=[32, 32],
+            output_act_fn="categorical")
+
     else:
-        model = DensePolicy_b(input_dim=6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=128, output_dim=4)
+        model = DensePolicy_b(input_dim=6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=hidden_dim, output_dim=4)
+
 
     if not reload:
         params = jax.random.uniform(
@@ -352,6 +381,15 @@ def training_reset(fitness_criterion, selection_type):
         params_single, obs_param = load_model("reproduce_CPPR/models_v1")
         params = jax.numpy.expand_dims(params_single, axis=0)
         for agent in range(nb_agents - 1):
+            params = jax.numpy.append(params, jax.numpy.expand_dims(params_single, axis=0), axis=0)
+
+
+
+
+    if policy_name == "metacnnrnn":
+        params_single, obs_param = load_model("reproduce_CPPR/models_cnnrnn")
+        params =  jax.numpy.expand_dims(params_single, axis=0)
+        for agent in range(nb_agents-1):
             params = jax.numpy.append(params, jax.numpy.expand_dims(params_single, axis=0), axis=0)
 
     posx = state.agents.posx
@@ -391,14 +429,14 @@ def training_reset(fitness_criterion, selection_type):
                     accumulated_rewards = accumulated_rewards + reward
 
                     if trial < int(0.7*gen_length):
-                        accumulated_staminas = accumulated_staminas * 0.92 + reward
+                        accumulated_staminas = accumulated_staminas * 0.99 + reward
                         # print(sum(reward), sum(accumulated_staminas))
                         accumulated_staminas = np.where(accumulated_staminas < 0.01, 0, accumulated_staminas)
                     elif trial == int(0.7*gen_length):
                         accumulated_staminas_late = accumulated_staminas
                     elif trial > int(0.7*gen_length):
-                        accumulated_staminas_late = accumulated_staminas_late * 0.92 + reward
-                        accumulated_staminas_late = np.where(accumulated_staminas_late < 0.01, 0, accumulated_staminas_late)
+                        accumulated_staminas_late = accumulated_staminas_late * 0.99 + reward
+                        accumulated_staminas_late = np.where(accumulated_staminas_late < 0.008, 0, accumulated_staminas_late)
 
                     rgb_im = state.state[:, :, :3]
                     rgb_im = np.repeat(rgb_im, 5, axis=0)
@@ -421,7 +459,12 @@ def training_reset(fitness_criterion, selection_type):
                     print(jnp.mean(accumulated_rewards), accumulated_rewards[ind_best[-50:]],
                           accumulated_rewards[ind_best[:50]])
                 print("selecting")
-                params, posx, posy = selection(params, nb_agents, key, ind_best, state,accumulated_staminas, accumulated_staminas_late, mutation_prob,
+                if iter < 50:
+                    reproduce_based_on = accumulated_rewards
+                    #reproduce_based_on = accumulated_staminas
+                else:
+                    reproduce_based_on = accumulated_staminas
+                params, posx, posy = selection(params, nb_agents, key, ind_best, state,reproduce_based_on, accumulated_staminas_late, mutation_prob,
                                    selection_type=selection_type)
                 print("selected")
                 """
@@ -512,7 +555,7 @@ def stable_training(fitness_criterion, selection_type):
     num_train_gens = 2000
     gen_length = 75
     init_food = 200
-    policy = "metarnn"
+    policy = "metarnncnn"
     climate = "constant"
     reload = False
     smaller = False
@@ -538,6 +581,9 @@ def stable_training(fitness_criterion, selection_type):
         hidden_dim = 16
     else:
         hidden_dim = 128
+    output_dim = 4
+    input_dim = 6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3
+    print(input_dim + hidden_dim + output_dim)
     if policy == "metarnn":
         model = MetaRnnPolicy_b(input_dim=6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=hidden_dim, output_dim=4)
         #model = MetaRnnPolicy_b(input_dim=        5 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=128, output_dim=4)
@@ -555,6 +601,12 @@ def stable_training(fitness_criterion, selection_type):
     else:
 
         params_single, obs_param = load_model("reproduce_CPPR/models_v1")
+        params =  jax.numpy.expand_dims(params_single, axis=0)
+        for agent in range(nb_agents-1):
+            params = jax.numpy.append(params, jax.numpy.expand_dims(params_single, axis=0), axis=0)
+
+    if policy == "metacnnrnn":
+        params_single, obs_param = load_model("reproduce_CPPR/models_cnnrnn")
         params =  jax.numpy.expand_dims(params_single, axis=0)
         for agent in range(nb_agents-1):
             params = jax.numpy.append(params, jax.numpy.expand_dims(params_single, axis=0), axis=0)

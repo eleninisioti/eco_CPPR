@@ -1,4 +1,4 @@
-"""
+
 import moviepy.editor as mvp
 from moviepy.video.io.ffmpeg_writer import FFMPEG_VideoWriter
 from IPython.display import HTML, display, clear_output
@@ -12,6 +12,7 @@ import moviepy.editor as mvp
 from moviepy.video.io.ffmpeg_writer import FFMPEG_VideoWriter
 from IPython.display import HTML, display, clear_output
 import numpy as np
+"""
 
 def merge_videos(directory, num_gens):
   import os
