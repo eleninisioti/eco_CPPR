@@ -317,7 +317,7 @@ def training_reset(fitness_criterion, selection_type):
     num_train_gens = 200
     gen_length = 750
     init_food = 200
-    policy_name = "metarnn"
+    policy_name = "metarnncnn"
     climate = "no-niches"
     reload = True
     smaller = True
