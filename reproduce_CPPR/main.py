@@ -317,18 +317,19 @@ def training_reset(fitness_criterion, selection_type):
     num_train_gens = 200
     gen_length = 750
     init_food = 200
-    policy_name = "metacnnrnn"
+    policy_name = "metarnn"
     climate = "no-niches"
     reload = True
     smaller = True
     mutation_prob = 0.2
     #env = Gridworld(num_train_gens * gen_length + 1, nb_agents, init_food, SX, SY)
-    env = Gridworld(max_steps=200,SX=10,SY=20)
+    env = Gridworld(max_steps=200,SX=10,SY=20, nb_agents=nb_agents)
+    seed=0
+    reset_keys = jax.random.split(jax.random.PRNGKey(seed), 1)
+    state = env._reset_fn(reset_keys)
+    # fitness_criterion = "rewards"
     key = jax.random.PRNGKey(np.random.randint(42))
     next_key, key = random.split(key)
-    state = env.reset(next_key)
-    # fitness_criterion = "rewards"
-
     plt.figure(figsize=(8, 6), dpi=160)
 
     vid = True
@@ -358,11 +359,11 @@ def training_reset(fitness_criterion, selection_type):
 
         model = MetaRnnPolicy_bcppr(
             input_dim=env.obs_shape[0] + env.act_shape[0] + 1,
-            hidden_dim=16,
+            hidden_dim=3,
             hidden_layers=[],
             output_dim=env.act_shape[0],
             encoder=True,
-            encoder_layers=[32, 32],
+            encoder_layers=[32, 3],
             output_act_fn="categorical")
 
     else:
@@ -387,7 +388,7 @@ def training_reset(fitness_criterion, selection_type):
 
 
     if policy_name == "metacnnrnn":
-        params_single, obs_param = load_model("reproduce_CPPR/models_cnnrnn")
+        params_single, obs_param = load_model("reproduce_CPPR/models_small")
         params =  jax.numpy.expand_dims(params_single, axis=0)
         for agent in range(nb_agents-1):
             params = jax.numpy.append(params, jax.numpy.expand_dims(params_single, axis=0), axis=0)
@@ -405,8 +406,8 @@ def training_reset(fitness_criterion, selection_type):
 
             for iter in range(num_train_gens):
 
-                next_key, key = random.split(key)
-                state = env._reset_fn(next_key)
+                reset_keys = jax.random.split(jax.random.PRNGKey(seed), 1)
+                state = env._reset_fn(reset_keys)
 
                 # temp_state = env._reset_fn_pos_food(next_key, pos_x, pos_y, food)
                 policy_states = model.reset(state)
