@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(os.getcwd())
 from reproduce_CPPR.utils import VideoWriter, gini_coefficient
-from reproduce_CPPR.gridworld import Gridworld
+from reproduce_CPPR.gridworld_oldv2 import Gridworld
 import random as nojaxrandom
 import jax
 import jax.numpy as jnp
@@ -325,8 +325,9 @@ def training_reset(fitness_criterion, selection_type):
     #env = Gridworld(num_train_gens * gen_length + 1, nb_agents, init_food, SX, SY)
     env = Gridworld(max_steps=200,SX=10,SY=20, nb_agents=nb_agents)
     seed=0
-    reset_keys = jax.random.split(jax.random.PRNGKey(seed), 1)
-    state = env._reset_fn(reset_keys)
+    key = jax.random.PRNGKey(np.random.randint(42))
+    next_key, key = random.split(key)
+    state = env.reset(next_key)
     # fitness_criterion = "rewards"
     key = jax.random.PRNGKey(np.random.randint(42))
     next_key, key = random.split(key)
@@ -406,8 +407,9 @@ def training_reset(fitness_criterion, selection_type):
 
             for iter in range(num_train_gens):
 
-                reset_keys = jax.random.split(jax.random.PRNGKey(seed), 1)
-                state = env._reset_fn(reset_keys)
+                key = jax.random.PRNGKey(np.random.randint(42))
+                next_key, key = random.split(key)
+                state = env.reset(next_key)
 
                 # temp_state = env._reset_fn_pos_food(next_key, pos_x, pos_y, food)
                 policy_states = model.reset(state)

@@ -109,7 +109,7 @@ class MetaRnnPolicy_bcppr(PolicyNetwork):
 
     def get_actions(self, t_states: TaskState, params: jnp.ndarray, p_states: PolicyState):
         params = self._format_params_fn(params)
-        h, c, out = self._forward_fn(params, p_states.lstm_h, p_states.lstm_c, t_states.obs, t_states.last_action,
-                                     t_states.reward)
+        h, c, out = self._forward_fn(params, p_states.lstm_h, p_states.lstm_c, t_states.obs, t_states.last_actions,
+                                     t_states.rewards)
         return out, metaRNNPolicyState_bcppr(keys=p_states.keys, lstm_h=h, lstm_c=c)
 
