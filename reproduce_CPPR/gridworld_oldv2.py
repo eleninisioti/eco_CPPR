@@ -4,6 +4,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Tuple
 import jax.numpy as jnp
+AGENT_VIEW = 3
 
 
 class TaskState(ABC):
@@ -158,7 +159,9 @@ class Gridworld(VectorizedTask):
                  test: bool = False):
         self.max_steps = max_steps
 
-        self.obs_shape = (5, 11, 4)
+        #self.obs_shape = (5, 11, 4)
+        self.obs_shape = tuple([(AGENT_VIEW*2+1)*(AGENT_VIEW*2+1)*3, ])
+
         # self.obs_shape=11*5*4
         self.act_shape = tuple([4, ])
         self.test = test
@@ -183,7 +186,7 @@ class Gridworld(VectorizedTask):
             grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, self.climate_type,
                                      self.climate_var)
 
-            return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 5)),
+            return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 4)),
                          rewards=jnp.zeros((nb_agents, 1)), agents=agents,
                          steps=jnp.zeros((), dtype=int), key=next_key)
 
