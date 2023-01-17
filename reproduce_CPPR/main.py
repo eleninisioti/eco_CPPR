@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(os.getcwd())
 from reproduce_CPPR.utils import VideoWriter, gini_coefficient
-from reproduce_CPPR.gridworld_oldv2 import Gridworld
+from reproduce_CPPR.gridworld_1agent import Gridworld
 import random as nojaxrandom
 import jax
 import jax.numpy as jnp
@@ -40,7 +40,8 @@ def test(params, nb_agents, ind_best,  SX, SY, key, model, project_dir, train_ge
 
 
     next_key, key = random.split(key)
-    state = env.reset(next_key)
+    reset_key= random.split(next_key,nb_test_agents)
+    state = env.reset(reset_key)
 
     policy_states = model.reset(state)
     eval_trials = 2
@@ -62,23 +63,23 @@ def test(params, nb_agents, ind_best,  SX, SY, key, model, project_dir, train_ge
                 actions_logit, policy_states = model.get_actions(state, params_b, policy_states)
 
 
-                actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), 5)
+                actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), 4)
 
                 # my agent
 
                 for hard_agent in range(hard_coded):
                     if i < 20:
-                        hard_actions = jax.nn.one_hot([rand_move], 5)
+                        hard_actions = jax.nn.one_hot([rand_move], 4)
                     else:
-                        hard_actions = jax.nn.one_hot([rand_move], 5)
+                        hard_actions = jax.nn.one_hot([rand_move], 4)
 
                     actions = actions.at[hard_agent].set(hard_actions[0])
 
-                cur_state, state, reward, done = env.step(state, actions)
+                state, reward, done = env.step(state, actions)
                 group_rewards.append(jnp.sum(reward))
 
                 # print(state.agents.seeds)
-                rgb_im = state.state[:, :, :3]
+                rgb_im = state.state[0, :, :3]
 
                 rgb_im = np.repeat(rgb_im, 20, axis=0)
                 rgb_im = np.repeat(rgb_im, 20, axis=1)
@@ -202,37 +203,40 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late, 
 
 
         new_params = jnp.zeros((params.shape[0], params.shape[1]))
-        new_posx = copy.copy(posx)
-        new_posy = copy.copy(posy)
+        new_posx = posx
+        new_posy = posy
         noffsprings = 0
-        for agent in two_offspring:
-            if noffsprings <= params.shape[0]:
-                mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1]-5792,))
-                temp = jnp.concatenate(params[agent, 5792:], mutated)
 
-                new_params = new_params.at[noffsprings].set(params[agent] + temp)
-                new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
-                new_posy = new_posy.at[noffsprings].set(state.agents.posy[agent])
+        if(len(two_offspring)>0):
+            for agent in two_offspring:
+                if noffsprings <= params.shape[0]:
+                    mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1],))
 
-            noffsprings += 1
-            if noffsprings <= params.shape[0]:
-                mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1]-5792,))
-                temp = jnp.concatenate(params[agent, 5792:], mutated)
+                    temp = mutated
 
-                new_params = new_params.at[noffsprings].set(params[agent] + temp)
-                new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
-                new_posy = new_posy.at[noffsprings].set(state.agents.posy[agent])
-            noffsprings += 1
+                    new_params = new_params.at[noffsprings].set(params[agent] + temp)
+                    new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
+                    new_posy = new_posy.at[noffsprings].set(state.agents.posy[agent])
 
-        for agent in one_offspring:
-            if noffsprings <= params.shape[0]:
-                mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1]-5792,))
-                temp = jnp.concatenate(params[agent, 5792:], mutated)
-
-                new_params = new_params.at[noffsprings].set(params[agent] + temp)
-                new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
-                new_posy = new_posy.at[noffsprings].set(state.agents.posy[agent])
                 noffsprings += 1
+                if noffsprings <= params.shape[0]:
+                    mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1],))
+                    temp =  mutated
+
+                    new_params = new_params.at[noffsprings].set(params[agent] + temp)
+                    new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
+                    new_posy = new_posy.at[noffsprings].set(state.agents.posy[agent])
+                noffsprings += 1
+        if(len(one_offspring)>0):
+            for agent in one_offspring:
+                if noffsprings <= params.shape[0]:
+                    mutated = mutation_prob*jax.random.normal(next_key1, (new_params.shape[1],))
+                    temp = mutated
+
+                    new_params = new_params.at[noffsprings].set(params[agent] + temp)
+                    new_posx = new_posx.at[noffsprings].set(state.agents.posx[agent])
+                    new_posy = new_posy.at[noffsprings].set(state.agents.posy[agent])
+                    noffsprings += 1
 
         if noffsprings < min_agents:
             not_reproduced = [el for el in list(range(nb_agents)) if el not in two_offspring and el not in one_offspring]
@@ -546,6 +550,238 @@ def training_reset(fitness_criterion, selection_type):
 
 
 
+def training_reset_1agent(fitness_criterion, selection_type):
+    smaller_grid = True
+    if smaller_grid:
+        divide = 8
+    else:
+        divide = 4
+    SX = int(640 / divide)
+    SY = int(1520 / divide)
+    nb_agents = 200
+    num_train_gens = 200
+    gen_length = 750
+    init_food = 200
+    policy_name = "metacnnrnn"
+    climate = "no-niches"
+    reload = False
+    smaller = True
+    mutation_prob = 0.2
+    #env = Gridworld(num_train_gens * gen_length + 1, nb_agents, init_food, SX, SY)
+    env = Gridworld(max_steps=200,SX=10,SY=10)
+    seed=0
+    key = jax.random.PRNGKey(np.random.randint(42))
+    next_key, key = random.split(key)
+    reset_key = jax.random.split(next_key, nb_agents)
+    state = env.reset(reset_key)
+    # fitness_criterion = "rewards"
+
+    plt.figure(figsize=(8, 6), dpi=160)
+
+    vid = True
+    now = datetime.datetime.now()
+    today = str(now.day) + "_" + str(now.month) + "_" + str(now.year)
+    project_dir = "projects/" + today + "/staminav1_follow_" + fitness_criterion + selection_type + "_genlen_" + \
+                  str(gen_length) + "_policy_" + policy_name + "_climate_" + climate + "_reload_" + str(
+        reload) + "_smaller_" + str(smaller) + "_grid_" + str(smaller_grid) + "_mutate_" + str(mutation_prob)
+    print(project_dir)
+    if not os.path.exists(project_dir):
+        os.makedirs(project_dir)
+
+
+    if smaller:
+        hidden_dim = 16
+    else:
+        hidden_dim = 128
+    output_dim = 4
+    input_dim = 6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3
+    print(input_dim + hidden_dim + output_dim)
+    if policy_name == "metarnn":
+        model = MetaRnnPolicy_b(input_dim=6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=hidden_dim, output_dim=4)
+        # model = MetaRnnPolicy_b(input_dim=        5 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=128, output_dim=4)
+
+    elif policy_name == "metacnnrnn":
+
+        model = MetaRnnPolicy_bcppr(
+            input_dim=env.obs_shape[0] + env.act_shape[0] + 1,
+            hidden_dim=3,
+            hidden_layers=[],
+            output_dim=env.act_shape[0],
+            encoder=True,
+            encoder_layers=[32, 3],
+            output_act_fn="categorical")
+
+    else:
+        model = DensePolicy_b(input_dim=6 + ((AGENT_VIEW * 2 + 1) ** 2) * 3, hidden_dim=hidden_dim, output_dim=4)
+
+
+    if not reload:
+        params = jax.random.uniform(
+            next_key,
+            (nb_agents, model.num_params,),
+            minval=-0.1,
+            maxval=0.1,
+        )
+    else:
+
+        params_single, obs_param = load_model("reproduce_CPPR/models_v1")
+        params = jax.numpy.expand_dims(params_single, axis=0)
+        for agent in range(nb_agents - 1):
+            params = jax.numpy.append(params, jax.numpy.expand_dims(params_single, axis=0), axis=0)
+
+
+
+    posx = state.agents.posx
+    posy = state.agents.posy
+
+    mean_rewards = []
+    mean_staminas = []
+    gini_coeffs = []
+    eval_rewards = []
+    if (vid):
+        try:
+            vid = VideoWriter(project_dir + "/training_0.mp4", 20.0)
+
+            for iter in range(num_train_gens):
+
+                key = jax.random.PRNGKey(np.random.randint(42))
+                next_key, key = random.split(key)
+                reset_key = jax.random.split(next_key, nb_agents)
+                state = env.reset(reset_key)
+
+                # temp_state = env._reset_fn_pos_food(next_key, pos_x, pos_y, food)
+                policy_states = model.reset(state)
+                accumulated_rewards = jnp.zeros(params.shape[0])
+                accumulated_staminas = jnp.ones(params.shape[0])
+
+                accumulated_staminas_late = jnp.ones(params.shape[0])
+
+
+                for trial in range(gen_length):
+                    next_key, key = random.split(key)
+                    actions_logit, policy_states = model.get_actions(state, params, policy_states)
+                    actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit, axis=-1), 4)
+                    none_actions = np.zeros((nb_agents, 4))
+                    for agent_row, agent in enumerate(accumulated_staminas):
+                        if agent == 0:
+                            actions = actions.at[agent_row].set(np.zeros(4))
+                    # actions = np.where(accumulated_staminas == 0, actions, actions)
+                    state, reward, done = env.step(state, actions)
+                    accumulated_rewards = accumulated_rewards + reward
+
+                    if trial < int(0.7*gen_length):
+                        accumulated_staminas = accumulated_staminas * 0.99 + reward
+                        # print(sum(reward), sum(accumulated_staminas))
+                        accumulated_staminas = np.where(accumulated_staminas < 0.01, 0, accumulated_staminas)
+                    elif trial == int(0.7*gen_length):
+                        accumulated_staminas_late = accumulated_staminas
+                    elif trial > int(0.7*gen_length):
+                        accumulated_staminas_late = accumulated_staminas_late * 0.99 + reward
+                        accumulated_staminas_late = np.where(accumulated_staminas_late < 0.008, 0, accumulated_staminas_late)
+
+                    rgb_im = state.state[0,:, :, :3]
+                    rgb_im = np.repeat(rgb_im, 5, axis=0)
+                    rgb_im = np.repeat(rgb_im, 5, axis=1)
+                    vid.add(rgb_im)
+
+                # accumulated_staminas = jnp.ones(nb_agents)
+                # accumulated_rewards = jnp.ones(nb_agents)
+                gini_coeffs.append(gini_coefficient(accumulated_rewards))
+
+                mean_rewards.append(jnp.mean(accumulated_rewards))
+                mean_staminas.append(jnp.mean(accumulated_staminas))
+                if fitness_criterion == "stamina":
+                    accumulated_rewards = accumulated_staminas
+
+                ind_best = jnp.argsort(accumulated_rewards)
+
+                if (iter % 1 == 0):
+                    print("generation ", str(iter), str(mean_rewards[-1]))
+                    print(jnp.mean(accumulated_rewards), accumulated_rewards[ind_best[-50:]],
+                          accumulated_rewards[ind_best[:50]])
+                print("selecting")
+                if iter < 50:
+                    reproduce_based_on = accumulated_rewards
+                    #reproduce_based_on = accumulated_staminas
+                else:
+                    reproduce_based_on = accumulated_staminas
+                params, posx, posy = selection(params, nb_agents, key, ind_best, state,reproduce_based_on, accumulated_staminas_late, mutation_prob,
+                                   selection_type=selection_type)
+                print("selected")
+                """
+                posx = state.agents.posx
+                posy = state.agents.posy
+
+                posx = jnp.concatenate(
+                    [state.agents.posx[ind_best[-nb_agents // 4:]], state.agents.posx[ind_best[-nb_agents // 4:]],
+                     state.agents.posx[ind_best[-nb_agents // 4:]], state.agents.posx[ind_best[-nb_agents // 4:]]])
+                posy = jnp.concatenate(
+                    [state.agents.posy[ind_best[-nb_agents // 4:]], state.agents.posy[ind_best[-nb_agents // 4:]],
+                     state.agents.posy[ind_best[-nb_agents // 4:]], state.agents.posy[ind_best[-nb_agents // 4:]]])
+                """
+
+                rgb_im = state.state[:, :, :3]
+                rgb_im = np.repeat(rgb_im, 5, axis=0)
+                rgb_im = np.repeat(rgb_im, 5, axis=1)
+                vid.add(rgb_im)
+
+                if (iter % 1 == 0):
+                    vid.close()
+                    vid = VideoWriter(project_dir + "/training_" + str(iter) + ".mp4", 20.0)
+                    with open(project_dir + "/data_" + str(iter) + ".pkl", "wb") as f:
+                        pickle.dump([mean_rewards, mean_staminas, gini_coeffs], file=f)
+
+                    plt.plot(range(len(mean_rewards)), mean_rewards)
+                    plt.ylabel("reward")
+                    plt.savefig(project_dir + "/rewards_" + str(iter) + ".png")
+                    plt.clf()
+
+                    plt.plot(range(len(mean_staminas)), mean_staminas)
+                    plt.ylabel("reward")
+                    plt.savefig(project_dir + "/staminas_" + str(iter) + ".png")
+                    plt.clf()
+
+                    plt.plot(range(len(gini_coeffs)), gini_coeffs)
+                    plt.ylabel("Equalilty")
+                    plt.savefig(project_dir + "/equality_" + str(iter) + ".png")
+                    plt.clf()
+
+                if (iter % 5 == 0):
+                    eval_rewards.append(test(params, nb_agents, ind_best, SX, SY, key, model, project_dir, iter))
+
+
+        except KeyboardInterrupt:
+            print("running aborted")
+            vid.close()
+
+        with open(project_dir + "/data.pkl", "wb") as f:
+            pickle.dump([mean_rewards, mean_staminas, gini_coeffs, eval_rewards], file=f)
+
+        with open(project_dir + "/for_eval.pkl", "wb") as f:
+            pickle.dump([params, nb_agents, ind_best, SX, SY, key, project_dir, iter], file=f)
+
+        test(params, nb_agents, ind_best, SX, SY, key, model, project_dir, iter)
+
+        plt.plot(range(len(eval_rewards)), eval_rewards)
+        plt.ylabel("eval rewards")
+        plt.savefig(project_dir + "/eval_rewards.png")
+        plt.clf()
+
+        plt.plot(range(len(mean_rewards)), mean_rewards)
+        plt.ylabel("reward")
+        plt.savefig(project_dir + "/rewards.png")
+        plt.clf()
+
+        plt.plot(range(len(mean_staminas)), mean_staminas)
+        plt.ylabel("stamina")
+        plt.savefig(project_dir + "/staminas.png")
+        plt.clf()
+
+        plt.plot(range(len(gini_coeffs)), gini_coeffs)
+        plt.ylabel("Equalilty")
+        plt.savefig(project_dir + "/equality.png")
+        plt.clf()
+
 def stable_training(fitness_criterion, selection_type):
     smaller_grid = True
     if smaller_grid:
@@ -756,7 +992,7 @@ if __name__ == "__main__":
     # rewards = "stamina"
     # selection_type = "gautier"
     print(selection_type, rewards)
-    training_reset(rewards, selection_type)
+    training_reset_1agent(rewards, selection_type)
 
     # stable_training("staminas", "eleni")
     # static_world(100)

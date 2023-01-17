@@ -92,8 +92,8 @@ class MetaRnnPolicy_bcppr(PolicyNetwork):
         self.num_params, format_params_fn = get_params_format_fn(self.params)
         self._logger.info('MetaRNNPolicy.num_params = {}'.format(self.num_params))
         self.hidden_dim = hidden_dim
-        self._format_params_fn = (jax.vmap(format_params_fn))
-        self._forward_fn = (jax.vmap(model.apply))
+        self._format_params_fn = jax.jit(jax.vmap(format_params_fn))
+        self._forward_fn = jax.jit(jax.vmap(model.apply))
 
     def reset(self, states: TaskState) -> PolicyState:
         """Reset the policy.
