@@ -151,11 +151,6 @@ class Gridworld(VectorizedTask):
             grid = state.state
 
             # move agent
-            # maybe later make the agent to output the one hot categorical
-            key, subkey = random.split(state.key)
-            # maybe later make the agent to output the one hot categorical
-            actions = jax.random.categorical(subkey, actions)
-            actions = jax.nn.one_hot(actions, 4)
 
             action_int = actions.astype(jnp.int32)
             posx = state.agents.posx - action_int[0] + action_int[2]
