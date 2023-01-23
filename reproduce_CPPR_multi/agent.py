@@ -27,6 +27,7 @@ class MetaRNN_bcppr(nn.Module):
 
         self._num_micro_ticks = 1
         self._lstm = nn.recurrent.LSTMCell()
+        self.convs = [nn.Conv(features=4, kernel_size=(3, 3)), nn.Conv(features=8, kernel_size=(3, 3))]
 
         self._hiddens = [(nn.Dense(size)) for size in self.hidden_layers]
         # self._encoder=nn.Dense(64)
@@ -39,6 +40,13 @@ class MetaRNN_bcppr(nn.Module):
         # todo replace with scan
         # inputs=self._encoder(inputs)
         out = inputs
+        for conv in self.convs:
+            out = conv(out)
+            out = nn.relu(out)
+            out = nn.avg_pool(out, window_shape=(2, 2), strides=(1, 1))
+
+        out = jnp.ravel(out)
+
         if (self.encoder_in):
             for layer in self._encoder:
                 out = jax.nn.tanh(layer(out))
@@ -47,9 +55,11 @@ class MetaRNN_bcppr(nn.Module):
 
         for _ in range(self._num_micro_ticks):
             carry, out = self._lstm(carry, inputs_encoded)
+        out = jnp.concatenate([inputs_encoded, out])
         for layer in self._hiddens:
             out = jax.nn.tanh(layer(out))
         out = self._output_proj(out)
+
         h, c = carry
         if self.out_fn == 'tanh':
             out = nn.tanh(out)
@@ -87,13 +97,13 @@ class MetaRnnPolicy_bcppr(PolicyNetwork):
         model = MetaRNN_bcppr(output_dim, out_fn=output_act_fn, hidden_layers=hidden_layers, encoder_in=encoder,
                               encoder_layers=encoder_layers)
         self.params = model.init(jax.random.PRNGKey(0), jnp.zeros((hidden_dim)), jnp.zeros((hidden_dim)),
-                                 jnp.zeros([input_dim - output_dim - 1]), jnp.zeros([output_dim]), jnp.zeros([1]))
+                                 jnp.zeros(input_dim), jnp.zeros([output_dim]), jnp.zeros([1]))
 
         self.num_params, format_params_fn = get_params_format_fn(self.params)
         self._logger.info('MetaRNNPolicy.num_params = {}'.format(self.num_params))
         self.hidden_dim = hidden_dim
-        self._format_params_fn = (jax.vmap(format_params_fn))
-        self._forward_fn = (jax.vmap(model.apply))
+        self._format_params_fn = jax.jit(jax.vmap(format_params_fn))
+        self._forward_fn = jax.jit(jax.vmap(model.apply))
 
     def reset(self, states: TaskState) -> PolicyState:
         """Reset the policy.
@@ -112,4 +122,3 @@ class MetaRnnPolicy_bcppr(PolicyNetwork):
         h, c, out = self._forward_fn(params, p_states.lstm_h, p_states.lstm_c, t_states.obs, t_states.last_actions,
                                      t_states.rewards)
         return out, metaRNNPolicyState_bcppr(keys=p_states.keys, lstm_h=h, lstm_c=c)
-

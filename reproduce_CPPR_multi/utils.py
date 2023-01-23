@@ -16,11 +16,11 @@ import numpy as np
 
 def merge_videos(directory, num_gens):
   import os
-  gens = range(0, num_gens, 10)
+  gens = range(0, num_gens, 100)
   L =[]
 
   for gen in gens:
-    file_path = "projects/" + directory + "/training_" + str(gen) + ".mp4"
+    file_path = "projects/" + directory + "/train_" + str(gen) + ".mp4"
     video = VideoFileClip(file_path)
     L.append(video)
 
@@ -70,4 +70,6 @@ class VideoWriter:
 
 
 if __name__ == "__main__":
-  merge_videos("9_1_2023/follow_rewardgautier_genlen_75_policy_metarnn_climate_constant_reload_False_smaller_True_grid_True", 1800)
+  #merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateconstant_noreset_True", 9400)
+  #merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateno-niches_noreset_True", 9400)
+  merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateperiodic_noreset_True", 9400)
