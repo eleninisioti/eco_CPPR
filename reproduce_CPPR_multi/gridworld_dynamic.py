@@ -3,7 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Tuple
 import jax.numpy as jnp
-
+import math
 
 class TaskState(ABC):
     """A
@@ -101,7 +101,8 @@ def get_ob(state: jnp.ndarray, pos_x: jnp.int32, pos_y: jnp.int32) -> jnp.ndarra
     return obs
 
 
-def get_init_state_fn(key: jnp.ndarray, SX, SY, posx, posy, pos_food_x, pos_food_y, climate_type, climate_var, gen=0) -> jnp.ndarray:
+def get_init_state_fn(key: jnp.ndarray, SX, SY, posx, posy, pos_food_x, pos_food_y, climate_type, climate_var,
+                      scale_niches, scale_niches_exponential, gen=0) -> jnp.ndarray:
     grid = jnp.zeros((SX, SY, 4))
     grid = grid.at[posx, posy, 0].add(1)
     grid = grid.at[pos_food_x, pos_food_y, 1].set(1)
@@ -118,12 +119,25 @@ def get_init_state_fn(key: jnp.ndarray, SX, SY, posx, posy, pos_food_x, pos_food
         # grid = grid.at[:, :, 3].add(baseline)
 
     elif climate_type == "constant":
-        new_array = jnp.clip(np.arange(0, SX) / SX, 0, 1)
+        if scale_niches_exponential > 1:
+            alpha=scale_niches_exponential
+            new_array = jnp.clip(np.asarray([(math.pow(alpha, el) - 1) / (alpha - 1) for el in np.arange(0, SX) / SX]), 0,
+                               1)
+        else:
+            new_array= jnp.clip(np.arange(0, SX) / SX * scale_niches, 0, 1)
+
         for col in range(SY - 1):
-            new_col = jnp.clip(np.arange(0, SX) / SX, 0, 1)
+            if scale_niches_exponential > 1:
+                alpha = scale_niches_exponential
+                new_col = jnp.clip(np.asarray([(math.pow(alpha, el)-1)/(alpha-1)  for el in np.arange(0, SX) / SX]), 0, 1)
+                #new_col = jnp.where(new_col < 0.2, 0, new_col)
+            else:
+                new_col = jnp.clip(np.arange(0, SX) / SX*scale_niches, 0, 1)
+
             new_array = jnp.append(new_array, new_col)
         new_array = jnp.transpose(jnp.reshape(new_array, (SY, SX)))
         grid = grid.at[:, :, 3].set(new_array)
+        #grid = grid.at[:, :, 3].set(0)
 
     elif climate_type == "periodic":
         period = 2000
@@ -164,6 +178,10 @@ class GridworldDynamic(VectorizedTask):
                  init_food = 200,
                  climate_type="no-niches",
                  climate_var=0.2,
+                 place_agent=False,
+                 place_resources=False,
+                 scale_niches = 1,
+                 scale_niches_exponential=0,
                  test: bool = False):
         self.max_steps = max_steps
 
@@ -176,28 +194,42 @@ class GridworldDynamic(VectorizedTask):
         self.SY = SY
         self.climate_type=climate_type
         self.climate_var=climate_var
+        self.place_agent = place_agent
+        self.place_resources = place_resources
 
         def reset_fn(key):
-            next_key, key = random.split(key)
-            posx = random.randint(next_key, (nb_agents,), 1, (SX - 1))
-            next_key, key = random.split(key)
-            posy = random.randint(next_key, (nb_agents,), 1, (SY - 1))
-            next_key, key = random.split(key)
-            agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
+            if self.place_agent:
+                next_key, key = random.split(key)
+                posx = random.randint(next_key, (nb_agents,), 1, (SX - 1))
+                next_key, key = random.split(key)
+                posy = random.randint(next_key, (nb_agents,), 1, (int(SY/10)))
+                next_key, key = random.split(key)
+                agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
+            else:
+                next_key, key = random.split(key)
+                posx = random.randint(next_key, (nb_agents,), 1, (SX - 1))
+                next_key, key = random.split(key)
+                posy = random.randint(next_key, (nb_agents,), 1, (SY - 1))
+                next_key, key = random.split(key)
+                agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
 
-            pos_food_x = random.randint(next_key, (init_food,), 1, (SX - 1))
-            next_key, key = random.split(key)
-            pos_food_y = random.randint(next_key, (init_food,), 1, (SY - 1))
-            next_key, key = random.split(key)
-            # pos_food_x= jnp.concatenate([pos_food_x,random.randint(next_key,(nb_agents*2,),2*(SX-1)//3,SX-1)])
-            # next_key, key = random.split(key)
-            # pos_food_y= jnp.concatenate([pos_food_y,random.randint(next_key,(nb_agents*2,),1,SY-1)])
-            # next_key, key = random.split(key)
-            # pos_food_x= jnp.concatenate([pos_food_x,random.randint(next_key,(nb_agents*2,),1,SX-1)])
-            # next_key, key = random.split(key)
-            # pos_food_y= jnp.concatenate([pos_food_y,random.randint(next_key,(nb_agents*2,),2*(SY-1)//3,SY-1)])
-            # next_key, key = random.split(key)
-            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, climate_type, climate_var)
+
+            if self.place_resources:
+
+                pos_food_x = random.randint(next_key, (init_food,), 1, (SX - 1))
+                next_key, key = random.split(key)
+                pos_food_y = random.randint(next_key, (init_food,), 8*(int(SY/10)), (SY - 1))
+                next_key, key = random.split(key)
+
+            else:
+                pos_food_x = random.randint(next_key, (init_food,), 1, (SX - 1))
+                next_key, key = random.split(key)
+                pos_food_y = random.randint(next_key, (init_food,), 1, (SY - 1))
+                next_key, key = random.split(key)
+
+
+            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, climate_type,
+                                     climate_var, scale_niches, scale_niches_exponential)
 
             return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 4)),
                          rewards=jnp.zeros((nb_agents, 1)), agents=agents,
@@ -206,7 +238,7 @@ class GridworldDynamic(VectorizedTask):
         self._reset_fn = jax.jit(reset_fn)
 
         def reset_fn_pos_food(key, posx, posy, food, gen):
-            """
+
 
             next_key, key = random.split(key)
             agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
@@ -217,6 +249,7 @@ class GridworldDynamic(VectorizedTask):
             posy = random.randint(next_key, (nb_agents,), 1, (SY - 1))
             next_key, key = random.split(key)
             agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
+            
 
             pos_food_x = random.randint(next_key, (init_food,), 1, SX - 1)
             next_key, key = random.split(key)
@@ -225,6 +258,12 @@ class GridworldDynamic(VectorizedTask):
             grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, self.climate_type,
                                      self.climate_var, gen)
             grid = grid.at[:, :, 1].set(food)
+            """
+            pos_food_x = random.randint(next_key, (init_food,), 1, (SX - 1))
+            next_key, key = random.split(key)
+            pos_food_y = random.randint(next_key, (init_food,), 1, (SY - 1))
+            next_key, key = random.split(key)
+            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, climate_type, climate_var, scale_niches, scale_niches_exponential, gen)
             return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 4)),
                          rewards=jnp.zeros((nb_agents, 1)), agents=agents,
                          steps=jnp.zeros((), dtype=int), key=next_key)
