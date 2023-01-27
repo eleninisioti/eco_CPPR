@@ -35,7 +35,7 @@ def create_jzscript(project_dir):
         fh.writelines("#!/bin/bash\n")
         fh.writelines("#SBATCH -A imi@v100\n")
         fh.writelines("#SBATCH --ntasks=1\n")
-        fh.writelines("#SBATCH --cpus -per -task = 8 \n")
+        fh.writelines("#SBATCH --cpus-per-task=8 \n")
         fh.writelines("#SBATCH --gres=gpu:1\n")
         fh.writelines("#SBATCH --hint=nomultithread\n")
         fh.writelines("#SBATCH --qos=qos_gpu -dev\n")
