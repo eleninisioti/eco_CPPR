@@ -26,7 +26,7 @@ def create_jzscript(project_dir):
     if not os.path.exists(scripts_dir):
         os.makedirs(scripts_dir)
 
-    for key, value in config:
+    for key, value in config.items():
         script_file = key + "_" + str(value)
 
     script_path = scripts_dir + "/" + script_file
