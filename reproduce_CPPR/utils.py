@@ -29,16 +29,16 @@ def create_jzscript(project_dir):
     for key, value in config.items():
         script_file = key + "_" + str(value)
 
-    script_path = scripts_dir + "/" + script_file
+    script_path = scripts_dir + "/" + script_file + ".sh"
 
     with open(script_path, "w") as fh:
         fh.writelines("#!/bin/bash\n")
         fh.writelines("#SBATCH -A imi@v100\n")
-        fh.writelines("--ntasks = 1\n")
-        fh.writelines("--cpus -per -task = 8 \n")
-        fh.writelines("--gres=gpu:1\n")
-        fh.writelines("--hint=nomultithread\n")
-        fh.writelines("--qos=qos_gpu -dev\n")
+        fh.writelines("#SBATCH --ntasks = 1\n")
+        fh.writelines("#SBATCH --cpus -per -task = 8 \n")
+        fh.writelines("#SBATCH --gres=gpu:1\n")
+        fh.writelines("#SBATCH --hint=nomultithread\n")
+        fh.writelines("#SBATCH --qos=qos_gpu -dev\n")
         fh.writelines("#SBATCH -J " + script_file + "\m")
         fh.writelines("#SBATCH -t 03:00:00\n")
         scratch_dir = "/gpfsscratch/rech/imi/utw61ti/CPPR_log/jz_logs"
