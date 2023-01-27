@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+import time
 
 test_configs = {"test_foraging": {"grid_width": 100,
                                   "grid_length": 100,
@@ -184,6 +185,11 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                 first_rewards = [None for el in range(config["nb_agents"])]
 
                 for i in range(config["gen_length"]):
+
+                    start = time.time()
+                    if i%10==0:
+                        print("test gen", i)
+                        print("time:", str(time.time()-start))
                     next_key, key = random.split(key)
                     actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
                     actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), ACTION_SIZE   )
