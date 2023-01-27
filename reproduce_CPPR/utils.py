@@ -26,10 +26,11 @@ def create_jzscript(project_dir):
     if not os.path.exists(scripts_dir):
         os.makedirs(scripts_dir)
 
+    script_file = scripts_dir + "/"
     for key, value in config.items():
-        script_file = key + "_" + str(value)
+        script_file += key + "_" + str(value)
 
-    script_path = scripts_dir + "/" + script_file + ".sh"
+    script_path = script_file + ".sh"
 
     with open(script_path, "w") as fh:
         fh.writelines("#!/bin/bash\n")
