@@ -19,7 +19,7 @@ import numpy as np
 
 def create_jzscript(project_dir):
     command = "python reproduce_CPPR/train.py " + project_dir
-    with open("projects/" + project_dir + "/config.yaml", "r") as f:
+    with open( project_dir + "/config.yaml", "r") as f:
         config = yaml.safe_load(f)
     now = datetime.datetime.now()
     scripts_dir = "../jz_scripts/" + str(now.day) + "_" + str(now.month) + "_" + str(now.year)
