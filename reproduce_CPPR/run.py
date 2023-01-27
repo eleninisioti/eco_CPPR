@@ -45,7 +45,11 @@ def test():
     config["init_food"] = 250
     config["regrowth_scale"] = 0.0005
     project_dir = setup_project(config)
-    train(project_dir)
+    if mode == "local":
+        train(project_dir)
+
+    elif mode == "server":
+        create_jzscript(config)
 
 
 def parametric():

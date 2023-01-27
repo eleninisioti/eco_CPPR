@@ -133,7 +133,7 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
     print("------Evaluating offline------")
     test_types = ["test_foraging",
                   "test_exploration",
-                  "test_imitation",
+                  "test_following",
                   "test_sustainability_low",
                   "test_sustainability_high"]
     eval_trials = 2
