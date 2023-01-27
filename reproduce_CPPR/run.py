@@ -10,7 +10,11 @@ from reproduce_CPPR.utils import create_jzscript
 def setup_project(config):
     now = datetime.datetime.now()
     today = str(now.day) + "_" + str(now.month) + "_" + str(now.year)
-    project_dir = "projects/" + today + "/N_" + str(config["nb_agents"]) + \
+    if mode == "local":
+        top_dir = "projects/"
+    else:
+        top_dir = "/gpfsscratch/rech/imi/utw61ti/CPPR_log/projects/"
+    project_dir = top_dir +  today + "/N_" + str(config["nb_agents"]) + \
                   "_nicheScale_" + str(config["niches_scale"]) + "_X_" + str(config["grid_width"]) + "_Y_" + str(
         config["grid_length"])
 
