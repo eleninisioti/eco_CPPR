@@ -1,6 +1,8 @@
 import sys
 import datetime
 import os
+import sys
+sys.path.append(os.getcwd())
 import yaml
 from reproduce_CPPR.train import train
 from reproduce_CPPR.utils import create_jzscript

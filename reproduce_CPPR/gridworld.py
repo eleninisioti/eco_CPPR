@@ -147,7 +147,7 @@ class Gridworld(VectorizedTask):
 
         self.max_steps = max_steps
 
-        self.obs_shape = (7, 7, 3)
+        self.obs_shape = (7, 7, 4)
         # self.obs_shape=11*5*4
         self.act_shape = tuple([ACTION_SIZE, ])
         self.test = test
@@ -197,7 +197,7 @@ class Gridworld(VectorizedTask):
 
             grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, niches_scale)
 
-            return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 4)),
+            return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, ACTION_SIZE)),
                          rewards=jnp.zeros((nb_agents, 1)), agents=agents,
                          steps=jnp.zeros((), dtype=int), key=next_key)
 
@@ -213,7 +213,7 @@ class Gridworld(VectorizedTask):
             pos_food_y = random.randint(next_key, (init_food,), 1, (SY - 1))
             next_key, key = random.split(key)
             grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, niches_scale)
-            return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 4)),
+            return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, ACTION_SIZE)),
                          rewards=jnp.zeros((nb_agents, 1)), agents=agents,
                          steps=jnp.zeros((), dtype=int), key=next_key)
 
@@ -226,9 +226,9 @@ class Gridworld(VectorizedTask):
             # maybe later make the agent to output the one hot categorical
             action_int = actions.astype(jnp.int32)
 
-            if action_int[:, 4]:
-                posx = state.agents.posx - action_int[:, 0] + action_int[:, 2]
-                posy = state.agents.posy - action_int[:, 1] + action_int[:, 3]
+
+            posx = state.agents.posx - action_int[:, 0]*action_int[:,4] + action_int[:, 2]*action_int[:,4]
+            posy = state.agents.posy - action_int[:, 1]*action_int[:,4]  + action_int[:, 3]*action_int[:,4]
 
             # wall
             hit_wall = state.state[posx, posy, 2] > 0

@@ -8,8 +8,8 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
-test_configs = {"test_foraging": {"grid_width": 80,
-                                  "grid_length": 190,
+test_configs = {"test_foraging": {"grid_width": 100,
+                                  "grid_length": 100,
                                   "nb_agents": 15,
                                   "hard_coded": 0,
                                   "gen_length": 500,
@@ -25,7 +25,7 @@ test_configs = {"test_foraging": {"grid_width": 80,
                                      "hard_coded": 0,
                                      "gen_length": 300,
                                      "init_food": 250,
-                                     "place_agent": False,
+                                     "place_agent": True,
                                      "place_resources": True,
                                      "regrowth_scale": 0},
 
@@ -186,11 +186,11 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                 for i in range(config["gen_length"]):
                     next_key, key = random.split(key)
                     actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
-                    actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), 4)
+                    actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), ACTION_SIZE   )
 
                     # the first 10 agents always go right
                     for hard_agent in range(config["hard_coded"]):
-                        hard_actions = jax.nn.one_hot([config["default_move"][i]], 4)
+                        hard_actions = jax.nn.one_hot([config["default_move"][i]], ACTION_SIZE)
                         actions = actions.at[hard_agent].set(hard_actions[0])
 
                     cur_state, state, reward, done = env.step(state, actions)

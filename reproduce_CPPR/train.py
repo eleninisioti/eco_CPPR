@@ -88,8 +88,7 @@ def train(project_dir):
             next_key, key = random.split(key)
             actions_logit, policy_states = model.get_actions(state, params, policy_states)
             actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit * 50, axis=-1), ACTION_SIZE)
-            for el in actions:
-                print(el)
+
             _, state, reward, done = env.step(state, actions)
             accumulated_rewards = accumulated_rewards + reward
 

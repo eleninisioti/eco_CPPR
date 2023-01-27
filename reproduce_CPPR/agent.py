@@ -14,7 +14,7 @@ from evojax.policy.base import PolicyNetwork
 from evojax.policy.base import PolicyState
 from evojax.util import create_logger
 from evojax.util import get_params_format_fn
-
+from reproduce_CPPR.gridworld import ACTION_SIZE
 
 class MetaRNN_bcppr(nn.Module):
     output_size: int
