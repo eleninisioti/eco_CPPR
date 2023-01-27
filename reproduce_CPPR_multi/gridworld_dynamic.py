@@ -152,7 +152,8 @@ def get_init_state_fn(key: jnp.ndarray, SX, SY, posx, posy, pos_food_x, pos_food
         print("scale", scale)
         # scale=-1
         grid = grid.at[:, :, 3].set(new_array + scale)
-    elif climate_type == "no-niches":
+
+    elif climate_type == "no-niches" or climate_type == "no-regrowth":
         grid = grid.at[:, :, 3].set(1.0)
 
     # grid=grid.at[:,:,3].set(5)
@@ -182,6 +183,7 @@ class GridworldDynamic(VectorizedTask):
                  place_resources=False,
                  scale_niches = 1,
                  scale_niches_exponential=0,
+                 regrowth_scale = 0.0005,
                  test: bool = False):
         self.max_steps = max_steps
 
@@ -193,16 +195,17 @@ class GridworldDynamic(VectorizedTask):
         self.SX = SX
         self.SY = SY
         self.climate_type=climate_type
-        self.climate_var=climate_var
+        self.climate_var = climate_var
+        self.regrowth_scale = regrowth_scale
         self.place_agent = place_agent
         self.place_resources = place_resources
 
         def reset_fn(key):
             if self.place_agent:
                 next_key, key = random.split(key)
-                posx = random.randint(next_key, (nb_agents,), 1, (SX - 1))
+                posx = random.randint(next_key, (nb_agents,), int(2/5*SX), int(3/5*SX))
                 next_key, key = random.split(key)
-                posy = random.randint(next_key, (nb_agents,), 1, (int(SY/10)))
+                posy = random.randint(next_key, (nb_agents,), int(2/5*SX), int(3/5*SX))
                 next_key, key = random.split(key)
                 agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
             else:
@@ -216,9 +219,15 @@ class GridworldDynamic(VectorizedTask):
 
             if self.place_resources:
 
-                pos_food_x = random.randint(next_key, (init_food,), 1, (SX - 1))
+                pos_food_x = jnp.concatenate((random.randint(next_key, (int(init_food/4),), 4*(int(SX/5)), (SX - 1)),
+                                             random.randint(next_key, (int(init_food/4),), 1, 1*(int(SX/5))),
+                                              random.randint(next_key, (int(init_food/4),), 1, (SX - 1)),
+                                              random.randint(next_key, (int(init_food/4),), 1, (SX - 1))))
                 next_key, key = random.split(key)
-                pos_food_y = random.randint(next_key, (init_food,), 8*(int(SY/10)), (SY - 1))
+                pos_food_y = jnp.concatenate((random.randint(next_key, (int(init_food/4),), 1, SY-1),
+                                              random.randint(next_key, (int(init_food/4),), 1, SY-1),
+                                              random.randint(next_key, (int(init_food/4),), 4*(int(SY/5)), (SY - 1)),
+                                             random.randint(next_key, (int(init_food/4),), 1, 1*(int(SY/5)))))
                 next_key, key = random.split(key)
 
             else:
@@ -299,7 +308,7 @@ class GridworldDynamic(VectorizedTask):
             num_neighbs = jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]),
                                                       mode="same")
             scale = grid[:, :, 3]
-            scale_constant = 0.0005
+            scale_constant = regrowth_scale
             num_neighbs = jnp.where(num_neighbs == 0, 0, num_neighbs)
             num_neighbs = jnp.where(num_neighbs == 1, 0.01 / 5, num_neighbs)
             num_neighbs = jnp.where(num_neighbs == 2, 0.01 / scale_constant, num_neighbs)
@@ -310,7 +319,9 @@ class GridworldDynamic(VectorizedTask):
             num_neighbs = jnp.multiply(num_neighbs, scale)
             num_neighbs = jnp.where(num_neighbs > 0, num_neighbs, 0)
             next_key, key = random.split(state.key)
-            grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs))
+
+            if climate_type != "no-regrowth":
+                grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs))
 
             # cells with too many resources around them die
             num_neighbs_subtract = jax.scipy.signal.convolve2d(grid[:, :, 1],
@@ -321,13 +332,19 @@ class GridworldDynamic(VectorizedTask):
             num_neighbs_subtract = jnp.where(num_neighbs_subtract > 3, 0.01 / scale_constant, num_neighbs_subtract)
             num_neighbs_subtract = jnp.where(num_neighbs_subtract <= 3, 0, num_neighbs_subtract)
             num_neighbs_subtract = jnp.multiply(num_neighbs_subtract, scale)
-            grid = grid.at[:, :, 1].add(-1 * random.bernoulli(next_key, num_neighbs_subtract))
+
+            if climate_type != "no-regrowth":
+
+                grid = grid.at[:, :, 1].add(-1 * random.bernoulli(next_key, num_neighbs_subtract))
 
             # resources die after some time
             # discount = 0.0001
             discount = 0.0
             alive_cells = jnp.where(grid[:, :, 1] > 0, discount, 0)
-            grid = grid.at[:, :, 1].add(-1 * random.bernoulli(next_key, alive_cells))
+
+            if climate_type != "no-regrowth":
+
+                grid = grid.at[:, :, 1].add(-1 * random.bernoulli(next_key, alive_cells))
 
             # print("after", jnp.sum(num_neighbs))
             # modulate the probability with the climate value

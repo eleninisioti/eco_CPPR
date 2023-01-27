@@ -3,22 +3,23 @@ import sys
 
 sys.path.append(os.getcwd())
 
-from reproduce_CPPR_multi.agent import MetaRnnPolicy_bcppr
+from reproduce_CPPR.agent import MetaRnnPolicy_bcppr
 #from reproduce_CPPR_multi.gridworld import Gridworld
 from reproduce_CPPR_multi.gridworld_dynamic import GridworldDynamic
 
-from reproduce_CPPR_multi.utils import VideoWriter
+from reproduce_CPPR.utils import VideoWriter
 import random as nojaxrandom
 import jax
 import jax.numpy as jnp
 from jax import random
-from flax.struct import dataclass
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import datetime
-from evojax.util import load_model
 import copy
+from reproduce_CPPR.testing import test
+from evojax.util import save_model
+
 
 AGENT_VIEW = 3
 
@@ -120,33 +121,49 @@ def selection(params, nb_agents, key, ind_best, state, staminas, staminas_late,
 
     return params, new_posx, new_posy
 
+"""
 def test(params, ind_best,  key, model, project_dir, train_gen, climate_type):
 
-    world_types = ["test_foraging", "test_exploration"]
+    world_types = ["test_foraging", "test_exploration", "test_imitation"]
     eval_rewards = {}
+    eval_imitation = {}
     for world_type in world_types:
         if world_type == "test_foraging":
             grid_width = 80
             grid_length = 190
             nb_test_agents = 15
-            hard_coded = 10
+            hard_coded = 0
             gen_length = 500
             init_food = 200
-            rand_move = np.random.randint(4)
+            #rand_move = np.random.randint(4)
             place_agent = False
             place_resources = False
 
         elif world_type == "test_exploration":
 
-            grid_width = 80
-            grid_length = 140
+            grid_width = 100
+            grid_length = 100
             nb_test_agents = 15
             hard_coded = 0
-            gen_length = 700
+            gen_length = 300
             init_food = 200
-            rand_move = np.random.randint(4)
+            #rand_move = np.random.randint(4)
             place_agent = True
             place_resources = True
+
+        elif world_type == "test_imitation":
+            grid_width = 50
+            grid_length = 50
+            nb_test_agents = 15
+            hard_coded = 10
+            gen_length = 40*10
+            init_food = 0
+            #rand_move = np.random.randint(4)
+            place_agent = False
+            place_resources = False
+            default_move = [3]*10 + [2]*10 + [0]*10 + [1]*10
+            default_move = default_move*10
+
 
 
         eval_trials = 2
@@ -171,10 +188,12 @@ def test(params, ind_best,  key, model, project_dir, train_gen, climate_type):
         policy_states = model.reset(state)
 
         print("Evaluating offline")
+        track_imitation = []
         total_rewards = []
         for trial in range(eval_trials):
 
             with VideoWriter(test_dir + "/trial_" + str(trial) + ".mp4", 5.0) as vid:
+                group_imitation = []
                 group_rewards = []
 
                 for i in range(gen_length):
@@ -184,29 +203,36 @@ def test(params, ind_best,  key, model, project_dir, train_gen, climate_type):
 
                     # the first 10 agents always go right
                     for hard_agent in range(hard_coded):
-                        hard_actions = jax.nn.one_hot([rand_move], 4)
+                        hard_actions = jax.nn.one_hot([default_move[i]], 4)
                         actions = actions.at[hard_agent].set(hard_actions[0])
 
+                    # compute imitation
+                    group_imitation.append(compute_imitation(actions, hard_coded))
+
                     cur_state, state, reward, done = env.step(state, actions)
-                    group_rewards.append(jnp.sum(reward[hard_coded:]))
+                    group_rewards.append(jnp.mean(reward[hard_coded:]))
 
                     rgb_im = state.state[:, :, :3]
                     rgb_im = np.repeat(rgb_im, 20, axis=0)
                     rgb_im = np.repeat(rgb_im, 20, axis=1)
                     vid.add(rgb_im)
                 vid.close()
-                total_rewards.append(np.mean(group_rewards))
+                track_imitation.append(np.sum(group_imitation))
+                total_rewards.append(np.sum(group_rewards))
 
             print("Evaluation performance at this trial:", str(np.mean(total_rewards)))
 
         eval_rewards[world_type] = np.mean(total_rewards)
+        eval_imitation[world_type] = np.mean(track_imitation)
+        print("imitation for", world_type, np.mean(track_imitation))
 
-    return eval_rewards
-
+    return eval_rewards, eval_imitation
+"""
 def gautier():
 
     nb_agents = 200
-    num_gens = 10000
+    num_gens = 1000
+    eval_freq = int(num_gens/50)
     gen_length = 500
     grid_length = 80*2
     grid_width = 190*2
@@ -255,13 +281,12 @@ def gautier():
     project_dir = "projects/" + today + "/norespawn_" + str(nb_agents) + "_climate" + climate_type + "_noreset_" + \
                   str(noreset) + "_select_" + selection_type + "_nichescale_" + str(scale_niches) + "_scaleexponential_" + str(scale_niches_exponential) + "_nolearn_" + str(no_learning)
     print(project_dir)
-    if not os.path.exists(project_dir):
-        os.makedirs(project_dir)
-    else:
-        project_dir = project_dir + "_newrun"
-        if not os.path.exists(project_dir):
+    if not os.path.exists(project_dir + "/data"):
+        os.makedirs(project_dir + "/data")
 
-            os.makedirs(project_dir)
+    if not os.path.exists(project_dir + "/models"):
+        os.makedirs(project_dir + "/models")
+
 
 
     keep_mean_rewards = []
@@ -270,6 +295,7 @@ def gautier():
     keep_eval_explore_rewards = []
 
     keep_energy = []
+    keep_imitation = {"test_foraging": [], "test_exploration": [], "test_imitation": []}
 
 
     for iter_evo in range(num_gens):
@@ -286,8 +312,9 @@ def gautier():
         accumulated_energy = jnp.ones(nb_agents)
         later_energy = jnp.ones(nb_agents)
 
-        if (iter_evo % 10 == 0):
+        if (iter_evo % eval_freq == 0):
             with VideoWriter(project_dir + "/train_" + str(iter_evo) +".mp4", 20.0) as vid:
+                state_log = []
                 for i in range(gen_length):
                     next_key, key = random.split(key)
                     if not no_learning:
@@ -297,13 +324,8 @@ def gautier():
 
                     actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit * 50, axis=-1), 4)
 
-                    """"
-                    for agent_row, agent in enumerate(accumulated_energy):
-                        if agent == 0 or later_energy[agent_row]==0:
-                            actions = actions.at[agent_row].set(np.zeros(4))
-                    """
-
                     _, state, reward, done = env.step(state, actions)
+                    state_log.append(state)
 
                     accumulated_rewards = accumulated_rewards + reward
                     #print(i, accumulated_energy)
@@ -324,6 +346,10 @@ def gautier():
                         vid.add(rgb_im)
 
                 vid.close()
+                with open(project_dir + "/data/gen_" + str(iter_evo) +".pkl", "wb") as f:
+                    pickle.dump(state_log, f)
+
+                save_model(model_dir=project_dir+"/models", model_name="gen_" + str(iter_evo), params=params)
         else:
             for i in range(gen_length):
                 next_key, key = random.split(key)
@@ -356,23 +382,44 @@ def gautier():
         keep_max_rewards.append(max(accumulated_rewards))
         ind_best = jnp.argsort(accumulated_rewards)
 
-        if (iter_evo % 10 == 0):
+        if (iter_evo % eval_freq == 0):
             print(jnp.mean(accumulated_rewards), accumulated_rewards[ind_best[-3:]], accumulated_rewards[ind_best[:3]])
             #eval_rewards = test(params, nb_agents, ind_best, grid_width, grid_length, key, model, project_dir, iter_evo, climate_type)
             if not no_learning:
-                eval_rewards = test(params, ind_best,  key, model, project_dir, iter_evo, climate_type)
+                eval_info = test(params, ind_best,  key, model, project_dir, iter_evo)
+                process_eval_info(eval_info) # saves and adds to buffer
                 keep_eval_rewards.append(eval_rewards["test_foraging"])
                 keep_eval_explore_rewards.append(eval_rewards["test_exploration"])
+
+                keep_imitation["test_foraging"].append(eval_imitation["test_foraging"])
+                keep_imitation["test_exploration"].append(eval_imitation["test_exploration"])
+                keep_imitation["test_imitation"].append(eval_imitation["test_imitation"])
+
+
 
 
             plt.plot(range(len(keep_mean_rewards)), keep_mean_rewards, label="mean")
             plt.plot(range(len(keep_max_rewards)), keep_max_rewards, label="max")
-            plt.plot(range(len(keep_eval_rewards)), keep_eval_rewards, label="eval foraging")
-            plt.plot(range(len(keep_eval_explore_rewards)), keep_eval_explore_rewards, label="eval exploration")
-
-            plt.ylabel("rewards")
+            plt.ylabel("Training rewards")
             plt.legend()
-            plt.savefig(project_dir + "/rewards_" + str(iter_evo) + ".png")
+            plt.savefig(project_dir + "/train_rewards_" + str(iter_evo) + ".png")
+            plt.clf()
+
+            plt.plot(range(len(keep_eval_rewards)), keep_eval_rewards, label="foraging")
+            plt.plot(range(len(keep_eval_explore_rewards)), keep_eval_explore_rewards, label="exploration")
+
+            plt.ylabel("Evaluation rewards")
+            plt.legend()
+            plt.savefig(project_dir + "/eval_rewards_" + str(iter_evo) + ".png")
+            plt.clf()
+
+            plt.plot(range(len(keep_imitation["test_foraging"])), keep_imitation["test_foraging"], label="foraging")
+            plt.plot(range(len(keep_imitation["test_exploration"])), keep_imitation["test_exploration"], label="exploration")
+            plt.plot(range(len(keep_imitation["test_imitation"])), keep_imitation["test_imitation"], label="exploration")
+
+            plt.ylabel("Imitation")
+            plt.legend()
+            plt.savefig(project_dir + "/imitation_" + str(iter_evo) + ".png")
             plt.clf()
 
         if not no_learning:

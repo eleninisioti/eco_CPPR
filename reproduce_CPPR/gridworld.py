@@ -1,8 +1,8 @@
-
 from abc import ABC
 from abc import abstractmethod
 from typing import Tuple
 import jax.numpy as jnp
+import math
 
 
 class TaskState(ABC):
@@ -47,6 +47,7 @@ class VectorizedTask(ABC):
         """
         raise NotImplementedError()
 
+
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -72,6 +73,7 @@ from flax.struct import dataclass
 
 SIZE_GRID = 4
 AGENT_VIEW = 3
+ACTION_SIZE = 5
 
 
 @dataclass
@@ -101,19 +103,28 @@ def get_ob(state: jnp.ndarray, pos_x: jnp.int32, pos_y: jnp.int32) -> jnp.ndarra
     return obs
 
 
-def get_init_state_fn(key: jnp.ndarray, SX, SY, posx, posy, pos_food_x, pos_food_y) -> jnp.ndarray:
+def get_init_state_fn(key: jnp.ndarray, SX, SY, posx, posy, pos_food_x, pos_food_y,
+                      niches_scale) -> jnp.ndarray:
     grid = jnp.zeros((SX, SY, 4))
     grid = grid.at[posx, posy, 0].add(1)
     grid = grid.at[pos_food_x, pos_food_y, 1].set(1)
-    grid = grid.at[:, :, 3].set(jnp.int8(jnp.clip(jnp.expand_dims(jnp.arange(0, SX) / 35, 1), 0, 127)))
-    grid = grid.at[600:700, :300, 3].set(0)
-    # grid=grid.at[:,:,3].set(5)
+
+    new_array = jnp.clip(np.asarray([(math.pow(niches_scale, el) - 1) / (niches_scale - 1) for el in np.arange(0, SX) / SX]), 0,
+                         1)
+
+    for col in range(SY - 1):
+        new_col = jnp.clip(np.asarray([(math.pow(niches_scale, el) - 1) / (niches_scale - 1) for el in np.arange(0, SX) / SX]), 0, 1)
+
+        new_array = jnp.append(new_array, new_col)
+    new_array = jnp.transpose(jnp.reshape(new_array, (SY, SX)))
+    grid = grid.at[:, :, 3].set(new_array)
 
     grid = grid.at[0, :, 2].set(1)
     grid = grid.at[-1, :, 2].set(1)
     grid = grid.at[:, 0, 2].set(1)
     grid = grid.at[:, -1, 2].set(1)
-    return (grid)
+
+    return grid
 
 
 get_obs_vector = jax.vmap(get_ob, in_axes=(None, 0, 0), out_axes=0)
@@ -127,38 +138,64 @@ class Gridworld(VectorizedTask):
                  nb_agents: int = 100,
                  SX=300,
                  SY=100,
+                 init_food=200,
+                 place_agent=False,
+                 place_resources=False,
+                 niches_scale=2,
+                 regrowth_scale=0.0005,
                  test: bool = False):
+
         self.max_steps = max_steps
 
-        self.obs_shape = (7, 7, 4)
+        self.obs_shape = (7, 7, 3)
         # self.obs_shape=11*5*4
-        self.act_shape = tuple([4, ])
+        self.act_shape = tuple([ACTION_SIZE, ])
         self.test = test
         self.nb_agents = nb_agents
         self.SX = SX
         self.SY = SY
+        self.regrowth_scale = regrowth_scale
+        self.place_agent = place_agent
+        self.place_resources = place_resources
 
         def reset_fn(key):
-            next_key, key = random.split(key)
-            posx = random.randint(next_key, (nb_agents,), 1, (SX - 1))
-            next_key, key = random.split(key)
-            posy = random.randint(next_key, (nb_agents,), 1, (SY - 1))
-            next_key, key = random.split(key)
-            agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
+            if self.place_agent:
+                next_key, key = random.split(key)
+                posx = random.randint(next_key, (nb_agents,), int(2 / 5 * SX), int(3 / 5 * SX))
+                next_key, key = random.split(key)
+                posy = random.randint(next_key, (nb_agents,), int(2 / 5 * SX), int(3 / 5 * SX))
+                next_key, key = random.split(key)
+                agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
+            else:
+                next_key, key = random.split(key)
+                posx = random.randint(next_key, (nb_agents,), 1, (SX - 1))
+                next_key, key = random.split(key)
+                posy = random.randint(next_key, (nb_agents,), 1, (SY - 1))
+                next_key, key = random.split(key)
+                agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
 
-            pos_food_x = random.randint(next_key, (8 * nb_agents,), 1, (SX - 1))
-            next_key, key = random.split(key)
-            pos_food_y = random.randint(next_key, (8 * nb_agents,), 1, (SY - 1))
-            next_key, key = random.split(key)
-            # pos_food_x= jnp.concatenate([pos_food_x,random.randint(next_key,(nb_agents*2,),2*(SX-1)//3,SX-1)])
-            # next_key, key = random.split(key)
-            # pos_food_y= jnp.concatenate([pos_food_y,random.randint(next_key,(nb_agents*2,),1,SY-1)])
-            # next_key, key = random.split(key)
-            # pos_food_x= jnp.concatenate([pos_food_x,random.randint(next_key,(nb_agents*2,),1,SX-1)])
-            # next_key, key = random.split(key)
-            # pos_food_y= jnp.concatenate([pos_food_y,random.randint(next_key,(nb_agents*2,),2*(SY-1)//3,SY-1)])
-            # next_key, key = random.split(key)
-            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y)
+            if self.place_resources:
+
+                pos_food_x = jnp.concatenate(
+                    (random.randint(next_key, (int(init_food / 4),), 4 * (int(SX / 5)), (SX - 1)),
+                     random.randint(next_key, (int(init_food / 4),), 1, 1 * (int(SX / 5))),
+                     random.randint(next_key, (int(init_food / 4),), 1, (SX - 1)),
+                     random.randint(next_key, (int(init_food / 4),), 1, (SX - 1))))
+                next_key, key = random.split(key)
+                pos_food_y = jnp.concatenate((random.randint(next_key, (int(init_food / 4),), 1, SY - 1),
+                                              random.randint(next_key, (int(init_food / 4),), 1, SY - 1),
+                                              random.randint(next_key, (int(init_food / 4),), 4 * (int(SY / 5)),
+                                                             (SY - 1)),
+                                              random.randint(next_key, (int(init_food / 4),), 1, 1 * (int(SY / 5)))))
+                next_key, key = random.split(key)
+
+            else:
+                pos_food_x = random.randint(next_key, (init_food,), 1, (SX - 1))
+                next_key, key = random.split(key)
+                pos_food_y = random.randint(next_key, (init_food,), 1, (SY - 1))
+                next_key, key = random.split(key)
+
+            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, niches_scale)
 
             return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 4)),
                          rewards=jnp.zeros((nb_agents, 1)), agents=agents,
@@ -167,18 +204,15 @@ class Gridworld(VectorizedTask):
         self._reset_fn = jax.jit(reset_fn)
 
         def reset_fn_pos_food(key, posx, posy, food):
+
             next_key, key = random.split(key)
             agents = AgentStates(posx=posx, posy=posy, seeds=jnp.zeros(nb_agents))
 
-            # dummy food location to use the same generate init state bc lazy
-            pos_food_x = random.randint(next_key, (8 * nb_agents,), 1, SX - 1)
+            pos_food_x = random.randint(next_key, (init_food,), 1, (SX - 1))
             next_key, key = random.split(key)
-            pos_food_y = random.randint(next_key, (8 * nb_agents,), 1, SY - 1)
+            pos_food_y = random.randint(next_key, (init_food,), 1, (SY - 1))
             next_key, key = random.split(key)
-            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y)
-            # in fact use the previous food location
-            grid = grid.at[:, :, 1].set(food)
-
+            grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, niches_scale)
             return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((nb_agents, 4)),
                          rewards=jnp.zeros((nb_agents, 1)), agents=agents,
                          steps=jnp.zeros((), dtype=int), key=next_key)
@@ -191,8 +225,10 @@ class Gridworld(VectorizedTask):
             # move agent
             # maybe later make the agent to output the one hot categorical
             action_int = actions.astype(jnp.int32)
-            posx = state.agents.posx - action_int[:, 0] + action_int[:, 2]
-            posy = state.agents.posy - action_int[:, 1] + action_int[:, 3]
+
+            if action_int[:, 4]:
+                posx = state.agents.posx - action_int[:, 0] + action_int[:, 2]
+                posy = state.agents.posy - action_int[:, 1] + action_int[:, 3]
 
             # wall
             hit_wall = state.state[posx, posy, 2] > 0
@@ -211,13 +247,47 @@ class Gridworld(VectorizedTask):
             grid = grid.at[posx, posy, 1].set(0)
 
             # regrow
-
-            probability = jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]) / 4,
+            num_neighbs = jax.scipy.signal.convolve2d(grid[:, :, 1], jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]),
                                                       mode="same")
-            # modulate the probability with the climate value
-            probability = probability * jnp.clip(grid[:, :, 3] / 2000 - grid[:, :, 2], 0, 1)
+            scale = grid[:, :, 3]
+            scale_constant = regrowth_scale
             next_key, key = random.split(state.key)
-            grid = grid.at[:, :, 1].add(random.bernoulli(next_key, probability))
+
+            if scale_constant != 0:
+                num_neighbs = jnp.where(num_neighbs == 0, 0, num_neighbs)
+                num_neighbs = jnp.where(num_neighbs == 1, 0.01 / 5, num_neighbs)
+                num_neighbs = jnp.where(num_neighbs == 2, 0.01 / scale_constant, num_neighbs)
+                num_neighbs = jnp.where(num_neighbs == 3, 0.05 / scale_constant, num_neighbs)
+                num_neighbs = jnp.where(num_neighbs > 3, 0, num_neighbs)
+                num_neighbs = jnp.multiply(num_neighbs, scale)
+                num_neighbs = jnp.where(num_neighbs > 0, num_neighbs, 0)
+
+                grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs))
+
+            # cells with too many resources around them die
+            """
+            num_neighbs_subtract = jax.scipy.signal.convolve2d(grid[:, :, 1],
+                                                               jnp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]]),
+                                                               mode="same")
+            scale = grid[:, :, 3]
+            scale_constant = 1
+            num_neighbs_subtract = jnp.where(num_neighbs_subtract > 3, 0.01 / scale_constant, num_neighbs_subtract)
+            num_neighbs_subtract = jnp.where(num_neighbs_subtract <= 3, 0, num_neighbs_subtract)
+            num_neighbs_subtract = jnp.multiply(num_neighbs_subtract, scale)
+            
+            grid = grid.at[:, :, 1].add(-1 * random.bernoulli(next_key, num_neighbs_subtract))
+            """
+            # resources die after some time
+            discount = 0.0
+            alive_cells = jnp.where(grid[:, :, 1] > 0, discount, 0)
+
+            grid = grid.at[:, :, 1].add(-1 * random.bernoulli(next_key, alive_cells))
+
+            # print("after", jnp.sum(num_neighbs))
+            # modulate the probability with the climate value
+            # probability=probability*jnp.clip(grid[:,:,3]/2000-grid[:,:,2],0,1)
+            # grid=grid.at[:,:,1].add(random.bernoulli(next_key, num_neighbs))
+            # grid = grid.at[:, :, 1].add(random.bernoulli(next_key, num_neighbs_subtract))
 
             ####
             steps = state.steps + 1

@@ -69,6 +69,22 @@ class VideoWriter:
       display(mvp.ipython_display(fn, **kw))
 
 
+def compute_imitation(actions,  num_hard_coded):
+  actions = np.array(actions)
+  group_imitation = 0
+  hard_action = actions[0]
+  for action in actions[num_hard_coded:]:
+    identical_moves = np.sum([1 for idx, el in enumerate(action) if el == hard_action[idx]])
+    if identical_moves == len(hard_action):
+      group_imitation += 1
+
+  group_imitation = group_imitation/(len(actions)-num_hard_coded)
+
+
+  return group_imitation
+
+
+
 if __name__ == "__main__":
   #merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateconstant_noreset_True", 9400)
   #merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateno-niches_noreset_True", 9400)
