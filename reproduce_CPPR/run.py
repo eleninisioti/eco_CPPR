@@ -17,7 +17,7 @@ def setup_project(config):
     project_dir = top_dir + today + "/"
     for key, value in config.items():
         project_dir += key + "_" + str(value)
-    
+
 
 
     if not os.path.exists(project_dir + "/train/data"):
