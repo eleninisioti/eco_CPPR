@@ -22,7 +22,7 @@ def create_jzscript(project_dir):
     with open( project_dir + "/config.yaml", "r") as f:
         config = yaml.safe_load(f)
     now = datetime.datetime.now()
-    scripts_dir = "../jz_scripts/" + str(now.day) + "_" + str(now.month) + "_" + str(now.year)
+    scripts_dir = "jz_scripts/" + str(now.day) + "_" + str(now.month) + "_" + str(now.year)
     if not os.path.exists(scripts_dir):
         os.makedirs(scripts_dir)
 
