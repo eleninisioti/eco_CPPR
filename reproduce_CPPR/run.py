@@ -87,4 +87,4 @@ if __name__ == "__main__":
               "niches_scale": 2}
 
     test()
-    parametric()
+    #parametric()
