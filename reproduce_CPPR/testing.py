@@ -183,13 +183,11 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                 group_rewards = []
                 group_dispersal = []
                 first_rewards = [None for el in range(config["nb_agents"])]
+                start = time.time()
 
                 for i in range(config["gen_length"]):
 
-                    start = time.time()
-                    if i%10==0:
-                        print("test gen", i)
-                        print("time:", str(time.time()-start))
+
                     next_key, key = random.split(key)
                     actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
                     actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), ACTION_SIZE   )
@@ -220,6 +218,7 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                     rgb_im = np.repeat(rgb_im, 20, axis=1)
                     vid.add(rgb_im)
 
+                print(str(config["gen_length"]), " steps took ", str(time.time()-start))
                 vid.close()
                 # summing over episodes
                 following.append(np.mean(group_following))
