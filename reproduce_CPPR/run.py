@@ -86,7 +86,7 @@ def parametric():
 
 if __name__ == "__main__":
     mode = sys.argv[1]  # choose between local and server
-    user = sys.arvg[2]
+    user = sys.argv[2]
     config = {"nb_agents": 0,
               "num_gens": 1000,
               "eval_freq": 20,
