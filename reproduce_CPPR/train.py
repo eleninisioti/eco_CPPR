@@ -4,7 +4,6 @@ import sys
 sys.path.append(os.getcwd())
 
 from reproduce_CPPR.agent import MetaRnnPolicy_bcppr
-# from reproduce_CPPR_multi.gridworld import Gridworld
 from reproduce_CPPR.gridworld import Gridworld, ACTION_SIZE
 
 from reproduce_CPPR.utils import VideoWriter
@@ -90,9 +89,11 @@ def train(project_dir):
             actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit * 50, axis=-1), ACTION_SIZE)
 
             _, state, reward, done = env.step(state, actions)
+
             accumulated_rewards = accumulated_rewards + reward
 
             if (gen % config["eval_freq"] == 0):
+
                 rgb_im = state.state[:, :, :3]
                 rgb_im = np.repeat(rgb_im, 2, axis=0)
                 rgb_im = np.repeat(rgb_im, 2, axis=1)

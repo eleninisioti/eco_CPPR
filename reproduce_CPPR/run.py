@@ -89,7 +89,7 @@ if __name__ == "__main__":
     user = sys.argv[2]
     config = {"nb_agents": 0,
               "num_gens": 1000,
-              "eval_freq": 20,
+              "eval_freq": 50,
               "gen_length": 0,
               "grid_width": 0,
               "init_food": 0,

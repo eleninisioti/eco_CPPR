@@ -13,11 +13,10 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                   "grid_length": 100,
                                   "nb_agents": 15,
                                   "hard_coded": 0,
-                                  "gen_length": 500,
+                                  "gen_length": 300,
                                   "init_food": 250,
                                   "place_agent": False,
                                   "place_resources": False,
-                                  "climate_type": "no-regrowth",
                                   "regrowth_scale": 0},
 
                 "test_exploration": {"grid_width": 100,
@@ -34,7 +33,7 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                    "grid_length": 100,
                                    "nb_agents": 15,
                                    "hard_coded": 10,
-                                   "gen_length": 400,
+                                   "gen_length": 300,
                                    "init_food": 250,
                                    "place_agent": False,
                                    "place_resources": False,
@@ -189,6 +188,7 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
 
 
                     next_key, key = random.split(key)
+
                     actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
                     actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), ACTION_SIZE   )
 
@@ -199,24 +199,33 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
 
                     cur_state, state, reward, done = env.step(state, actions)
 
+
                     positions_log["posx"].append(state.agents.posx)
                     positions_log["posy"].append(state.agents.posy)
 
                     # keep track of group properties
-                    group_following.append(measure_following(state.agents, agent_view))
-                    group_dispersal.append(measure_dispersal(state.agents, agent_view))
+                    if i%(int(config["gen_length"]/5)) == 0:
+
+                        group_following.append(measure_following(state.agents, agent_view))
+                        group_dispersal.append(measure_dispersal(state.agents, agent_view))
 
                     group_rewards.append(jnp.sum(reward[config["hard_coded"]:]))
 
+
+                    start_process = time.time()
+
                     first_times = np.where(reward > 0, i, None)
+
                     for idx, el in enumerate(first_times):
                         if el != None and first_rewards[idx] == None:
                             first_rewards[idx] = el
 
+
                     rgb_im = state.state[:, :, :3]
-                    rgb_im = np.repeat(rgb_im, 20, axis=0)
-                    rgb_im = np.repeat(rgb_im, 20, axis=1)
+                    rgb_im = np.repeat(rgb_im, 2, axis=0)
+                    rgb_im = np.repeat(rgb_im, 2, axis=1)
                     vid.add(rgb_im)
+
 
                 print(str(config["gen_length"]), " steps took ", str(time.time()-start))
                 vid.close()
