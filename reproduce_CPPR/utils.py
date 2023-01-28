@@ -17,7 +17,7 @@ import numpy as np
 """
 
 
-def create_jzscript(project_dir):
+def create_jzscript(project_dir, user):
     command = "python reproduce_CPPR/train.py " + project_dir
     with open( project_dir + "/config.yaml", "r") as f:
         config = yaml.safe_load(f)
@@ -42,7 +42,9 @@ def create_jzscript(project_dir):
         fh.writelines("#SBATCH --qos=qos_gpu-dev\n")
         fh.writelines("#SBATCH -J " + script_file + "\n")
         fh.writelines("#SBATCH -t 01:59:00\n")
-        scratch_dir = "/gpfsscratch/rech/imi/utw61ti/CPPR_log/jz_logs"
+        scratch_dir = "/gpfsscratch/rech/imi/"+ user + "/CPPR_log/jz_logs"
+        if not os.path.exists(scratch_dir):
+            os.makedirs(scratch_dir)
         fh.writelines("#SBATCH --output=" + scratch_dir + "/%j.out\n")
         fh.writelines("#SBATCH --error=" + scratch_dir + "/%j.err\n")
         fh.writelines("module load tensorflow-gpu/py3/2.9.1\n")

@@ -18,7 +18,7 @@ import datetime
 from reproduce_CPPR.testing import eval, process_eval
 from evojax.util import save_model
 import yaml
-
+import time
 
 def selection(params, nb_agents, key, ind_best, state):
     """ Survival of the fittest.
@@ -83,7 +83,7 @@ def train(project_dir):
         if gen % config["eval_freq"] == 0:
             vid = VideoWriter(project_dir + "/train/media/gen_" + str(gen) + ".mp4", 20.0)
             state_log = []
-
+        start = time.time()
         for i in range(config["gen_length"]):
             next_key, key = random.split(key)
             actions_logit, policy_states = model.get_actions(state, params, policy_states)
@@ -99,6 +99,7 @@ def train(project_dir):
                 vid.add(rgb_im)
 
                 state_log.append(state)
+        print("Training ", str(config["gen_length"]), " steps took ", str(time.time() - start))
 
         ind_best = jnp.argsort(accumulated_rewards)
 

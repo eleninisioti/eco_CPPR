@@ -13,7 +13,7 @@ def setup_project(config):
     if mode == "local":
         top_dir = "projects/"
     else:
-        top_dir = "/gpfsscratch/rech/imi/utw61ti/CPPR_log/projects/"
+        top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/"
     project_dir = top_dir + today + "/"
     for key, value in config.items():
         project_dir += key + "_" + str(value)
@@ -55,7 +55,7 @@ def test():
         train(project_dir)
 
     elif mode == "server":
-        create_jzscript(project_dir)
+        create_jzscript(project_dir, user)
 
 
 def parametric():
@@ -86,6 +86,7 @@ def parametric():
 
 if __name__ == "__main__":
     mode = sys.argv[1]  # choose between local and server
+    user = sys.arvg[2]
     config = {"nb_agents": 0,
               "num_gens": 1000,
               "eval_freq": 20,
