@@ -226,7 +226,7 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                     rgb_im = np.repeat(rgb_im, 2, axis=1)
                     vid.add(rgb_im)
 
-xx
+
                 print(str(config["gen_length"]), " steps took ", str(time.time()-start))
                 vid.close()
                 # summing over episodes
