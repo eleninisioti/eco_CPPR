@@ -65,6 +65,18 @@ test_configs = {"test_foraging": {"grid_width": 100,
 
 def process_eval(eval_params, project_dir):
     last_eval_params = eval_params[-1]
+
+    efficiency = []
+    sustainability = []
+    following = []
+    dispersal = []
+    for gen in eval_params:
+        efficiency.append(eval_params[gen]["efficiency"])
+        sustainability.append(eval_params[gen]["sustainability"])
+        following.append(eval_params[gen]["following"])
+        dispersal.append(eval_params[gen]["dispersal"])
+
+
     current_gen = len(eval_params)
 
     with open(project_dir + "/eval/data/gen_" + str(current_gen), "wb") as f:
@@ -74,16 +86,16 @@ def process_eval(eval_params, project_dir):
 
     for task, params in last_eval_params.items():
 
-        axs[0].plot(range(len(params["efficiency"])), params["efficiency"], label=task)
+        axs[0].plot(range(len(efficiency)), efficiency, label=task)
         axs[0].ylabel("Efficiency")
 
-        axs[1].plot(range(len(params["sustainability"])), params["sustainability"], label=task)
+        axs[1].plot(range(len(sustainability)), sustainability, label=task)
         axs[1].ylabel("Sustainability")
 
-        axs[2].plot(range(len(params["following"])), params["following"], label=task)
+        axs[2].plot(range(len(following)), following, label=task)
         axs[2].ylabel("Following")
 
-        axs[3].plot(range(len(params["dispersal"])), params["dispersal"], label=task)
+        axs[3].plot(range(len(dispersal)), dispersal, label=task)
         axs[3].ylabel("dispersal")
 
     plt.legend()
@@ -136,7 +148,7 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                   "test_following",
                   "test_sustainability_low",
                   "test_sustainability_high"]
-    eval_trials = 2
+    eval_trials = 1
     eval_metrics = {"efficiency": {},
                     "following": {},
                     "sustainability": {}}
