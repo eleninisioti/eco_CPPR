@@ -45,7 +45,7 @@ def setup_project(config):
 def test():
     config["num_gens"] = 500
     config["nb_agents"] = 200
-    config["grid_length"] = 80
+    config["grid_length"] = 320
     config["grid_width"] = 160
     config["gen_length"] = 750
     config["init_food"] = 250
