@@ -120,7 +120,7 @@ def train(project_dir):
 
             # run offline evaluation
             eval_params.append(eval(params, ind_best, key, model, project_dir, config["agent_view"]))
-            process_eval(eval_params)
+            process_eval(eval_params, project_dir)
 
         params, posx, posy = selection(params,
                                        config["nb_agents"],

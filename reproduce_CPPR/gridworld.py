@@ -227,8 +227,10 @@ class Gridworld(VectorizedTask):
             action_int = actions.astype(jnp.int32)
 
 
-            posx = state.agents.posx - action_int[:, 0]*action_int[:,4] + action_int[:, 2]*action_int[:,4]
-            posy = state.agents.posy - action_int[:, 1]*action_int[:,4]  + action_int[:, 3]*action_int[:,4]
+
+            posx = state.agents.posx - action_int[:, 0]  + action_int[:, 2]
+            posy = state.agents.posy - action_int[:, 1]  + action_int[:, 3]
+
 
             # wall
             hit_wall = state.state[posx, posy, 2] > 0
