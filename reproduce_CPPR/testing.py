@@ -34,7 +34,7 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                    "nb_agents": 15,
                                    "hard_coded": 10,
                                    "gen_length": 300,
-                                   "init_food": 250,
+                                   "init_food": 0,
                                    "place_agent": False,
                                    "place_resources": False,
                                    "default_move": ([3] * 10 + [2] * 10 + [0] * 10 + [1] * 10) * 10,
@@ -60,7 +60,7 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                              "place_agent": False,
                                              "place_resources": False,
                                              "default_move": [],
-                                             "regrowth_scale": 0.005},
+                                             "regrowth_scale": 0.001},
                 }
 
 def process_eval(eval_params, project_dir):
@@ -70,7 +70,7 @@ def process_eval(eval_params, project_dir):
     sustainability = []
     following = []
     dispersal = []
-    for gen in eval_params:
+    for gen in range(len(eval_params)):
         efficiency.append(eval_params[gen]["efficiency"])
         sustainability.append(eval_params[gen]["sustainability"])
         following.append(eval_params[gen]["following"])
@@ -87,16 +87,16 @@ def process_eval(eval_params, project_dir):
     for task, params in last_eval_params.items():
 
         axs[0].plot(range(len(efficiency)), efficiency, label=task)
-        axs[0].ylabel("Efficiency")
+        axs[0].set_ylabel("Efficiency")
 
         axs[1].plot(range(len(sustainability)), sustainability, label=task)
-        axs[1].ylabel("Sustainability")
+        axs[1].set_ylabel("Sustainability")
 
         axs[2].plot(range(len(following)), following, label=task)
-        axs[2].ylabel("Following")
+        axs[2].set_ylabel("Following")
 
         axs[3].plot(range(len(dispersal)), dispersal, label=task)
-        axs[3].ylabel("dispersal")
+        axs[3].set_ylabel("dispersal")
 
     plt.legend()
     plt.savefig(project_dir + "/eval/media/metrics_" + str(current_gen) + ".png")
