@@ -88,7 +88,7 @@ def parametric():
                             train(project_dir)
 
                         elif mode == "server":
-                            create_jzscript(project_dir)
+                            create_jzscript(project_dir, user)
 
 
 if __name__ == "__main__":
