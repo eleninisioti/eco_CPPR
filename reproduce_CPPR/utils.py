@@ -39,7 +39,7 @@ def create_jzscript(project_dir, user):
         fh.writelines("#SBATCH --cpus-per-task=8 \n")
         fh.writelines("#SBATCH --gres=gpu:1\n")
         fh.writelines("#SBATCH --hint=nomultithread\n")
-        fh.writelines("#SBATCH --qos=qos_gpu-dev\n")
+        #fh.writelines("#SBATCH --qos=qos_gpu-dev\n")
         fh.writelines("#SBATCH -J " + script_file + "\n")
         fh.writelines("#SBATCH -t 01:59:00\n")
         scratch_dir = "/gpfsscratch/rech/imi/"+ user + "/CPPR_log/jz_logs"

@@ -59,8 +59,8 @@ def test():
 
 
 def parametric():
-    config["num_gens"] = 1000
-    config["gen_length"] = 500
+    config["num_gens"] = 2000
+    gen_length_values = [500, 1000]
     nb_agents_values = [20, 200, 600]
     world_size_values = [{"width": 160, "length": 380, "init_food": 500},
                          {"width": int(160*2/3), "length": int(380*2/3), "init_food": int(500*2/3)}]
@@ -70,32 +70,36 @@ def parametric():
 
     for trial in range(n_trials):
 
-        for nb_agent in nb_agents_values:
-            for world_size in world_size_values:
-                for niches_scale in niches_scale_values:
-                    for regrowth_scale in regrowth_scale_values:
-                        config["nb_agents"] = nb_agent
-                        config["grid_length"] = world_size["length"]
-                        config["grid_width"] = world_size["width"]
-                        config["init_food"] = world_size["init_food"]
-                        config["niches_scale"] = niches_scale
-                        config["regrowth_scale"] = regrowth_scale
-                        config["trial"] = trial
+        for gen_length in gen_length_values:
 
-                        project_dir = setup_project(config)
+            for nb_agent in nb_agents_values:
+                for world_size in world_size_values:
+                    for niches_scale in niches_scale_values:
+                        for regrowth_scale in regrowth_scale_values:
+                            config["gen_length"] = gen_length
+                            config["nb_agents"] = nb_agent
+                            config["grid_length"] = world_size["length"]
+                            config["grid_width"] = world_size["width"]
+                            config["init_food"] = world_size["init_food"]
+                            config["niches_scale"] = niches_scale
+                            config["regrowth_scale"] = regrowth_scale
+                            config["trial"] = trial
 
-                        if mode == "local":
-                            train(project_dir)
+                            project_dir = setup_project(config)
 
-                        elif mode == "server":
-                            create_jzscript(project_dir, user)
+                            if mode == "local":
+                                train(project_dir)
+
+                            elif mode == "server":
+                                create_jzscript(project_dir, user)
 
 
 if __name__ == "__main__":
     mode = sys.argv[1]  # choose between local and server
     user = sys.argv[2]
+
     config = {"nb_agents": 0,
-              "num_gens": 1000,
+              "num_gens": 2000,
               "eval_freq": 50,
               "gen_length": 0,
               "grid_width": 0,
