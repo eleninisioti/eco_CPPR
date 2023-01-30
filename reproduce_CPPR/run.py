@@ -7,16 +7,17 @@ import yaml
 from reproduce_CPPR.train import train
 from reproduce_CPPR.utils import create_jzscript
 
-def setup_project(config):
+def setup_project(config, exp_name):
     now = datetime.datetime.now()
     today = str(now.day) + "_" + str(now.month) + "_" + str(now.year)
     if mode == "local":
         top_dir = "projects/"
     else:
         top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/"
-    project_dir = top_dir + today + "/"
+    project_dir = top_dir + today + "/" + exp_name + "/"
     for key, value in config.items():
         project_dir += key + "_" + str(value)
+
 
 
 
@@ -50,7 +51,7 @@ def test():
     config["gen_length"] = 750
     config["init_food"] = 250
     config["regrowth_scale"] = 0.0005
-    project_dir = setup_project(config)
+    project_dir = setup_project(config, "test")
     if mode == "local":
         train(project_dir)
 
@@ -85,7 +86,7 @@ def parametric():
                             config["regrowth_scale"] = regrowth_scale
                             config["trial"] = trial
 
-                            project_dir = setup_project(config)
+                            project_dir = setup_project(config, "parametric")
 
                             if mode == "local":
                                 train(project_dir)
