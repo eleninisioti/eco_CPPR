@@ -82,7 +82,7 @@ def train(project_dir):
         if gen % config["eval_freq"] == 0:
             vid = VideoWriter(project_dir + "/train/media/gen_" + str(gen) + ".mp4", 20.0)
             state_log = []
-        start = time.time()
+        #start = time.time()
         for i in range(config["gen_length"]):
             next_key, key = random.split(key)
             actions_logit, policy_states = model.get_actions(state, params, policy_states)
@@ -100,7 +100,9 @@ def train(project_dir):
                 vid.add(rgb_im)
 
                 state_log.append(state)
-        print("Training ", str(config["gen_length"]), " steps took ", str(time.time() - start))
+        #print("Training ", str(config["gen_length"]), " steps took ", str(time.time() - start))
+        keep_mean_rewards.append(np.mean(accumulated_rewards))
+        keep_max_rewards.append(np.max(accumulated_rewards))
 
         ind_best = jnp.argsort(accumulated_rewards)
 
