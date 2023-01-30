@@ -63,47 +63,66 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                              "regrowth_scale": 0.002},
                 }
 
-def process_eval(eval_params, project_dir):
-    last_eval_params = eval_params[-1]
-
-    efficiency = []
-    sustainability = []
-    following = []
-    dispersal = []
-    for gen in range(len(eval_params)):
-        efficiency.append(eval_params[gen]["efficiency"])
-        sustainability.append(eval_params[gen]["sustainability"])
-        following.append(eval_params[gen]["following"])
-        dispersal.append(eval_params[gen]["dispersal"])
 
 
-    current_gen = len(eval_params)
-
-    with open(project_dir + "/eval/data/gen_" + str(current_gen), "wb") as f:
-        pickle.dump(last_eval_params, f)
-
-    fig, axs = plt.subplots(4)
-
-    for task, params in last_eval_params.items():
-
-        axs[0].plot(range(len(efficiency)), efficiency, label=task)
-        axs[0].set_ylabel("Efficiency")
-
-        axs[1].plot(range(len(sustainability)), sustainability, label=task)
-        axs[1].set_ylabel("Sustainability")
-
-        axs[2].plot(range(len(following)), following, label=task)
-        axs[2].set_ylabel("Following")
-
-        axs[3].plot(range(len(dispersal)), dispersal, label=task)
-        axs[3].set_ylabel("dispersal")
-
-    plt.legend()
-    plt.savefig(project_dir + "/eval/media/metrics_" + str(current_gen) + ".png")
-    plt.clf()
+def process_eval(total_eval_params, project_dir, current_gen):
+    #current_gen = len(total_eval_params)
 
 
+    efficiency = {}
+    sustainability = {}
+    following = {}
+    dispersal = {}
 
+    for gen in range(len(total_eval_params)):
+        for test_type in total_eval_params[gen].keys():
+            if test_type not in efficiency.keys():
+                efficiency[test_type] = [total_eval_params[gen][test_type]["efficiency"]]
+            else:
+                efficiency[test_type].append(total_eval_params[gen][test_type]["efficiency"])
+
+            if test_type not in sustainability.keys():
+                sustainability[test_type] = [total_eval_params[gen][test_type]["sustainability"]]
+            else:
+                sustainability[test_type].append(total_eval_params[gen][test_type]["sustainability"])
+
+
+            if test_type not in following.keys():
+                following[test_type] = [total_eval_params[gen][test_type]["following"]]
+            else:
+                following[test_type].append(total_eval_params[gen][test_type]["following"])
+
+            if test_type not in dispersal.keys():
+                dispersal[test_type] = [total_eval_params[gen][test_type]["dispersal"]]
+            else:
+                dispersal[test_type].append(total_eval_params[gen][test_type]["dispersal"])
+
+        processed_results = {}
+        for test_type in efficiency.keys():
+            fig, axs = plt.subplots(4,  figsize=(7, 12))
+
+            axs[0].plot(range(len(efficiency[test_type])), efficiency[test_type])
+            axs[0].set_ylabel("Efficiency")
+
+            axs[1].plot(range(len(sustainability[test_type])), sustainability[test_type])
+            axs[1].set_ylabel("Sustainability")
+
+            axs[2].plot(range(len(following[test_type])), following[test_type])
+            axs[2].set_ylabel("Following")
+
+            axs[3].plot(range(len(dispersal[test_type])), dispersal[test_type])
+            axs[3].set_ylabel("dispersal")
+
+            plt.savefig(project_dir + "/eval/" + test_type + "/media/gen_" + str(current_gen) + ".png")
+            plt.clf()
+
+    processed_results= {"efficiency": efficiency,
+                                    "sustainability": sustainability,
+                                    "following": following,
+                                    "dispersal": dispersal}
+
+    with open(project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl", "wb") as f:
+        pickle.dump(processed_results, f)
 
 def measure_following(agents, agent_view):
     group_following = 0
@@ -123,7 +142,6 @@ def measure_following(agents, agent_view):
     return group_following
 
 
-
 def measure_dispersal(agents, agent_view):
     group_dispersal = 0
     for i, posx in enumerate(agents.posx):
@@ -139,7 +157,7 @@ def measure_dispersal(agents, agent_view):
     return group_dispersal
 
 
-def eval(params, ind_best, key, model, project_dir, agent_view):
+def eval(params, ind_best, key, model, project_dir, agent_view, current_gen):
     """ Test the behavior of trained agents on specific tasks.
     """
     print("------Evaluating offline------")
@@ -148,12 +166,14 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                   "test_following",
                   "test_sustainability_low",
                   "test_sustainability_high"]
-    eval_trials = 1
-    eval_metrics = {"efficiency": {},
-                    "following": {},
-                    "sustainability": {}}
+    eval_trials = 2
+    total_eval_metrics = {}
 
     for test_type in test_types:
+
+        eval_metrics = {"efficiency": {},
+                        "following": {},
+                        "sustainability": {}}
         print("Test-bed: ", test_type)
         config = test_configs[test_type]
 
@@ -189,7 +209,11 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
             positions_log = {"posx": [],
                              "posy": []}
 
-            with VideoWriter(test_dir + "/media/trial_" + str(trial) + ".mp4", 5.0) as vid:
+            video_dir = test_dir + "/media/trial_" + str(trial)
+            if not os.path.exists(video_dir):
+                os.makedirs(video_dir)
+
+            with VideoWriter(video_dir + "/gen_" + str(current_gen) + ".mp4", 5.0) as vid:
                 group_following = []
                 group_rewards = []
                 group_dispersal = []
@@ -198,11 +222,10 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
 
                 for i in range(config["gen_length"]):
 
-
                     next_key, key = random.split(key)
 
                     actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
-                    actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), ACTION_SIZE   )
+                    actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit), ACTION_SIZE)
 
                     # the first 10 agents always go right
                     for hard_agent in range(config["hard_coded"]):
@@ -211,20 +234,15 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
 
                     cur_state, state, reward, done = env.step(state, actions)
 
-
                     positions_log["posx"].append(state.agents.posx)
                     positions_log["posy"].append(state.agents.posy)
 
                     # keep track of group properties
-                    if i%(int(config["gen_length"]/5)) == 0:
-
+                    if i % (int(config["gen_length"] / 5)) == 0:
                         group_following.append(measure_following(state.agents, agent_view))
                         group_dispersal.append(measure_dispersal(state.agents, agent_view))
 
                     group_rewards.append(jnp.sum(reward[config["hard_coded"]:]))
-
-
-                    start_process = time.time()
 
                     first_times = np.where(reward > 0, i, None)
 
@@ -232,28 +250,31 @@ def eval(params, ind_best, key, model, project_dir, agent_view):
                         if el != None and first_rewards[idx] == None:
                             first_rewards[idx] = el
 
-
                     rgb_im = state.state[:, :, :3]
                     rgb_im = np.repeat(rgb_im, 2, axis=0)
                     rgb_im = np.repeat(rgb_im, 2, axis=1)
                     vid.add(rgb_im)
 
-
-                print(str(config["gen_length"]), " steps took ", str(time.time()-start))
+                print(str(config["gen_length"]), " steps took ", str(time.time() - start))
                 vid.close()
                 # summing over episodes
                 following.append(np.mean(group_following))
                 dispersal.append(np.mean(group_dispersal))
 
                 efficiency.append(np.mean(group_rewards))
-                sustainability.append(np.mean([el for el in first_rewards if el!=None ]))
+                sustain = [el for el in first_rewards if el != None]
+                if not len(sustain):
+                    sustain = [0]
+                sustainability.append(np.mean(sustain))
 
             print("Evaluation performance at this trial:", str(np.mean(efficiency)))
             with open(test_dir + "/data/trial_" + str(trial) + "_positions.pkl", "wb") as f:
                 pickle.dump(positions_log, f)
+
         eval_metrics["efficiency"] = np.mean(efficiency)
         eval_metrics["following"] = np.mean(following)
         eval_metrics["dispersal"] = np.mean(dispersal)
         eval_metrics["sustainability"] = np.mean(sustainability)
+        total_eval_metrics[test_type] = eval_metrics
 
-    return eval_metrics
+    return total_eval_metrics

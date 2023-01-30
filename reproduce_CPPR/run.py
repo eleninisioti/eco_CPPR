@@ -67,7 +67,7 @@ def parametric():
                          {"width": int(160*2/3), "length": int(380*2/3), "init_food": int(500*2/3)}]
     niches_scale_values = [2, 20, 200]
     regrowth_scale_values = [0.002, 0.0005]
-    n_trials = 2
+    n_trials = 3
 
     for trial in range(n_trials):
 

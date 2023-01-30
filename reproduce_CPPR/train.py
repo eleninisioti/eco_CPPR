@@ -110,7 +110,9 @@ def train(project_dir):
             # save training data
             vid.close()
             with open(project_dir + "/train/data/gen_" + str(gen) + ".pkl", "wb") as f:
-                pickle.dump(state_log, f)
+                pickle.dump({"states" : state_log,
+                             "mean_rewards": keep_mean_rewards,
+                             "max_rewards": keep_max_rewards}, f)
             save_model(model_dir=project_dir + "/train/models", model_name="gen_" + str(gen), params=params)
 
             plt.plot(range(len(keep_mean_rewards)), keep_mean_rewards, label="mean")
@@ -121,8 +123,8 @@ def train(project_dir):
             plt.clf()
 
             # run offline evaluation
-            eval_params.append(eval(params, ind_best, key, model, project_dir, config["agent_view"]))
-            process_eval(eval_params, project_dir)
+            eval_params.append(eval(params, ind_best, key, model, project_dir, config["agent_view"], gen))
+            process_eval(eval_params, project_dir, gen)
 
         params, posx, posy = selection(params,
                                        config["nb_agents"],
