@@ -16,9 +16,10 @@ def setup_project(config, exp_name):
         top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/"
     project_dir = top_dir + today + "/" + exp_name + "/"
     for key, value in config.items():
-        project_dir += key + "_" + str(value)
+        if key != "trial":
+            project_dir += key + "_" + str(value)
 
-
+    project_dir += "/trial_" + str(config["trial"])
 
 
     if not os.path.exists(project_dir + "/train/data"):
