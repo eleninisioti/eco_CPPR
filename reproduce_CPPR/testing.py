@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import time
+import random as nj_random
 
 test_configs = {"test_foraging": {"grid_width": 100,
                                   "grid_length": 100,
@@ -45,28 +46,29 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                             "nb_agents": 20,
                                             "hard_coded": 0,
                                             "gen_length": 1000,
-                                            "init_food": 200,
+                                            "init_food": 10,
                                             "place_agent": False,
                                             "place_resources": False,
                                             "default_move": [],
-                                            "regrowth_scale": 0.0005},
+                                            "regrowth_scale": 0.001*2},
 
                 "test_sustainability_high": {"grid_width": 100,
                                              "grid_length": 100,
                                              "nb_agents": 20,
                                              "hard_coded": 0,
                                              "gen_length": 1000,
-                                             "init_food": 200,
+                                             "init_food": 10,
                                              "place_agent": False,
                                              "place_resources": False,
                                              "default_move": [],
-                                             "regrowth_scale": 0.002},
+                                             "regrowth_scale": 0.003*2    },
                 }
 
 
 
 def process_eval(total_eval_params, project_dir, current_gen):
     #current_gen = len(total_eval_params)
+
 
 
     efficiency = {}
@@ -122,7 +124,7 @@ def process_eval(total_eval_params, project_dir, current_gen):
                                     "dispersal": dispersal}
 
     with open(project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl", "wb") as f:
-        pickle.dump(processed_results, f)
+            pickle.dump(processed_results, f)
 
 def measure_following(agents, agent_view):
     group_following = 0
@@ -157,7 +159,7 @@ def measure_dispersal(agents, agent_view):
     return group_dispersal
 
 
-def eval(params, ind_best, key, model, project_dir, agent_view, current_gen):
+def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_gen):
     """ Test the behavior of trained agents on specific tasks.
     """
     print("------Evaluating offline------")
@@ -166,8 +168,9 @@ def eval(params, ind_best, key, model, project_dir, agent_view, current_gen):
                   "test_following",
                   "test_sustainability_low",
                   "test_sustainability_high"]
-    eval_trials = 2
+    eval_trials = 10
     total_eval_metrics = {}
+    nj_random.seed(1)
 
     for test_type in test_types:
 
@@ -185,7 +188,10 @@ def eval(params, ind_best, key, model, project_dir, agent_view, current_gen):
         if not os.path.exists(test_dir + "/data"):
             os.makedirs(test_dir + "/data")
 
-        params_test = params[ind_best[-config["nb_agents"]:]]
+        #ind_best[-config["nb_agents"]:]
+        random_subset = nj_random.choices(list(range(nb_train_agents)), k=config["nb_agents"])
+
+        params_test = params[random_subset,:]
 
         env = Gridworld(max_steps=config["gen_length"] + 1,
                         SX=config["grid_length"],
@@ -212,6 +218,10 @@ def eval(params, ind_best, key, model, project_dir, agent_view, current_gen):
             video_dir = test_dir + "/media/trial_" + str(trial)
             if not os.path.exists(video_dir):
                 os.makedirs(video_dir)
+            print("check video at ", video_dir)
+            trial_dir = test_dir + "/data/trial_" + str(trial)
+            if not os.path.exists(trial_dir):
+                os.makedirs(trial_dir)
 
             with VideoWriter(video_dir + "/gen_" + str(current_gen) + ".mp4", 5.0) as vid:
                 group_following = []
@@ -268,7 +278,7 @@ def eval(params, ind_best, key, model, project_dir, agent_view, current_gen):
                 sustainability.append(np.mean(sustain))
 
             print("Evaluation performance at this trial:", str(np.mean(efficiency)))
-            with open(test_dir + "/data/trial_" + str(trial) + "_positions.pkl", "wb") as f:
+            with open(trial_dir + "/gen_"  + str(current_gen) + "_positions.pkl", "wb") as f:
                 pickle.dump(positions_log, f)
 
         eval_metrics["efficiency"] = np.mean(efficiency)

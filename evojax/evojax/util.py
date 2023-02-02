@@ -70,7 +70,7 @@ def create_logger(name: str,
     return logger
 
 
-def load_model(model_dir: str) -> Tuple[np.ndarray, np.ndarray]:
+def load_model(model_dir: str, model_name: str) -> Tuple[np.ndarray, np.ndarray]:
     """Load policy parameters from the specified directory.
 
     Args:
@@ -80,13 +80,14 @@ def load_model(model_dir: str) -> Tuple[np.ndarray, np.ndarray]:
         (param_size,) and (1 + 2 * obs_params_size,).
     """
 
-    model_file = os.path.join(model_dir, 'model.npz')
+    model_file = os.path.join(model_dir, model_name)
     if not os.path.exists(model_file):
+        print(model_file)
         raise ValueError('Model file {} does not exist.')
     with np.load(model_file) as data:
         params = data['params']
-        obs_params = data['obs_params']
-    return params, obs_params
+        #obs_params = data['obs_params']
+    return params, []
 
 
 def save_model(model_dir: str,

@@ -53,11 +53,13 @@ def create_jzscript(project_dir, user):
 
 def merge_videos(directory, num_gens):
     import os
-    gens = range(0, num_gens, 100)
+    gens = range(0, num_gens, 50)
     L = []
 
+    print(len(list(gens)))
+    tmep = list(gens)
     for gen in gens:
-        file_path = "projects/" + directory + "/train_" + str(gen) + ".mp4"
+        file_path = "projects/" + directory + "/train/media/gen_" + str(gen) + ".mp4"
         video = VideoFileClip(file_path)
         L.append(video)
 
@@ -109,4 +111,6 @@ class VideoWriter:
 if __name__ == "__main__":
     # merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateconstant_noreset_True", 9400)
     # merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateno-niches_noreset_True", 9400)
-    merge_videos("22_1_2023/multi_agent_dynamic_200_noreset_climateperiodic_noreset_True", 9400)
+    #merge_videos("server/31_1_2023/parametric/nb_agents_200num_gens_2000eval_freq_50gen_length_1000grid_width_160init_food_500agent_view_3regrowth_scale_0.002niches_scale_2grid_length_380/trial_0", 1450)
+    #merge_videos("server/31_1_2023/parametric/nb_agents_600num_gens_2000eval_freq_50gen_length_1000grid_width_160init_food_500agent_view_3regrowth_scale_0.002niches_scale_200grid_length_380/trial_1", 1450)
+    merge_videos("server/31_1_2023/parametric/nb_agents_200num_gens_2000eval_freq_50gen_length_500grid_width_106init_food_333agent_view_3regrowth_scale_0.002niches_scale_200grid_length_253/trial_0", 1450)
