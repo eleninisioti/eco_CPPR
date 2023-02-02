@@ -15,7 +15,7 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                   "nb_agents": 15,
                                   "hard_coded": 0,
                                   "gen_length": 300,
-                                  "init_food": 250,
+                                  "init_food": 150,
                                   "place_agent": False,
                                   "place_resources": False,
                                   "regrowth_scale": 0},
@@ -61,7 +61,7 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                              "place_agent": False,
                                              "place_resources": False,
                                              "default_move": [],
-                                             "regrowth_scale": 0.003*2    },
+                                             "regrowth_scale": 0.01},
                 }
 
 
@@ -189,9 +189,10 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
             os.makedirs(test_dir + "/data")
 
         #ind_best[-config["nb_agents"]:]
-        random_subset = nj_random.choices(list(range(nb_train_agents)), k=config["nb_agents"])
+        random_subset = nj_random.choices(list(range(int(1/4*nb_train_agents), nb_train_agents)),
+                                          k=config["nb_agents"])
 
-        params_test = params[random_subset,:]
+        params_test = params[random_subset, :]
 
         env = Gridworld(max_steps=config["gen_length"] + 1,
                         SX=config["grid_length"],

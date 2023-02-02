@@ -11,11 +11,17 @@ import copy
 def setup_project(config, exp_name):
     now = datetime.datetime.now()
     today = str(now.day) + "_" + str(now.month) + "_" + str(now.year)
-    if mode == "local":
-        top_dir = "projects/"
+    if config["load_trained"]:
+        if mode == "local":
+            top_dir = "projects/report/"
+        else:
+            top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/report/"
+
     else:
-        top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/"
-    top_dir = "projects/report/"
+        if mode == "local":
+            top_dir = "projects/"
+        else:
+            top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/"
     project_dir = top_dir + today + "/" + exp_name
     conf_test = copy.copy(config)
 

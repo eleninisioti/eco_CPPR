@@ -203,6 +203,8 @@ def post_process(project_dir):
     # last_gen = 500
     # load training data
     last_gen = 1400
+    #last_gen = 400
+    #n_trials = 0
     for trial in range(n_trials):
         trial_dir = project_dir + "/trial_" + str(trial)
         try:
@@ -399,11 +401,11 @@ if __name__ == "__main__":
     n_trials = 3
     top_dir = "projects/" + sys.argv[1]
     project_dirs = [top_dir + "/" + el for el in os.listdir(top_dir) if os.path.isdir(top_dir + "/" + el)]
-    for project in project_dirs:
-        post_process(project)
+    #for project in project_dirs:
+        #post_process(project)
 
     # compare(top_dir)
     parameters = ["niches_scale", "regrowth_scale"]
-    #for param in parameters:
+    for param in parameters:
         #compare_single_parameter(top_dir, param)
-    #heatmap(top_dir, "regrowth_scale", "niches_scale")
+    heatmap(top_dir, "regrowth_scale", "niches_scale")
