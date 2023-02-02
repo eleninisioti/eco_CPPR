@@ -34,8 +34,8 @@ def setup_project(config, exp_name):
             if "load_trained" in conf_test.keys() and "load_trained" not in config_current.keys():
                 del conf_test["load_trained"]
 
-            x = conf_test
-            y = config_current
+            x = {key: el  for key, el in conf_test.items() if key!= "trial"}
+            y = {key: el  for key, el in config_current.items() if key!= "trial"}
             shared_items = {k: x[k] for k in x if k in y and x[k] != y[k]}
             if not len(shared_items):
 
@@ -124,7 +124,8 @@ def limited_parametric():
                             project_dir = setup_project(config, "parametric")
 
                             if mode == "local":
-                                train(project_dir)
+                                print("yo")
+                                #train(project_dir)
 
                             elif mode == "server":
                                 create_jzscript(project_dir, user)
