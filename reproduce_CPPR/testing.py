@@ -46,22 +46,22 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                             "nb_agents": 20,
                                             "hard_coded": 0,
                                             "gen_length": 1000,
-                                            "init_food": 10,
+                                            "init_food": 20,
                                             "place_agent": False,
                                             "place_resources": False,
                                             "default_move": [],
-                                            "regrowth_scale": 0.001*2},
+                                            "regrowth_scale": 2},
 
                 "test_sustainability_high": {"grid_width": 100,
                                              "grid_length": 100,
                                              "nb_agents": 20,
                                              "hard_coded": 0,
                                              "gen_length": 1000,
-                                             "init_food": 10,
+                                             "init_food": 20,
                                              "place_agent": False,
                                              "place_resources": False,
                                              "default_move": [],
-                                             "regrowth_scale": 0.01},
+                                             "regrowth_scale": 1.5},
                 }
 
 
@@ -163,11 +163,12 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
     """ Test the behavior of trained agents on specific tasks.
     """
     print("------Evaluating offline------")
-    test_types = ["test_foraging",
+    test_types = ["test_sustainability_low",
+                  "test_sustainability_high",
+                  "test_foraging",
                   "test_exploration",
-                  "test_following",
-                  "test_sustainability_low",
-                  "test_sustainability_high"]
+                  "test_following"
+                  ]
     eval_trials = 10
     total_eval_metrics = {}
     nj_random.seed(1)

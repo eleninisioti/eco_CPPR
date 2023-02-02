@@ -358,9 +358,9 @@ def heatmap(top_dir, x_feature, y_feature):
     sns.set()
     train_trials = 3
     current_gen = 1400
-    project_dirs = [top_dir + "/" + el for el in os.listdir(top_dir) if os.path.isdir(top_dir + "/" + el)]
+    project_dirs = [top_dir + "/" + el for el in os.listdir(top_dir) if os.path.isdir(top_dir + "/" + el) and "parametric" not in el and "test" not in el]
     data = {}
-    metrics = ["efficiency"]
+    metrics = ["efficiency", "sustainability", "following", "dispersal"]
     test_types = ["test_foraging",
                   "test_exploration",
                   "test_following",
@@ -373,20 +373,23 @@ def heatmap(top_dir, x_feature, y_feature):
                     config = yaml.safe_load(f)
                 values = []
                 for trial in range(train_trials):
-                    with open(project + "/eval/data/gen_" + str(current_gen) + ".pkl", "wb") as f:
+                    with open(project + "/trial_" + str(trial) + "/eval/data/gen_" + str(current_gen) + ".pkl", "rb") as f:
                         results = pickle.load(f)
-                        values.append(results[test][metric][-1])
+                        values.append(results[metric][test][-1])
                 data[config[x_feature], config[y_feature]] = np.mean(values)
 
             ser = pd.Series(list(data.values()),
                             index=pd.MultiIndex.from_tuples(data.keys()))
             df = ser.unstack().fillna(0)
-            sns.heatmap(df)
-            plt.show()
-            save_dir = top_dir + "/test_" + test + "_metric_" + metric
+            sns.heatmap(df,cmap="YlGnBu")
+            save_dir = top_dir + "/heatmaps/test_" + test + "_metric_" + metric
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
+                plt.xlabel("Niches scale")
+                plt.ylabel("Regrowth scale")
             plt.savefig(save_dir + "/heatmap_" + x_feature + "_" + y_feature)
+
+            plt.clf()
 
 
 
@@ -406,6 +409,6 @@ if __name__ == "__main__":
 
     # compare(top_dir)
     parameters = ["niches_scale", "regrowth_scale"]
-    for param in parameters:
+    #for param in parameters:
         #compare_single_parameter(top_dir, param)
     heatmap(top_dir, "regrowth_scale", "niches_scale")

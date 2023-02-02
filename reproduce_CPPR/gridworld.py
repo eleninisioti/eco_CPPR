@@ -257,7 +257,7 @@ class Gridworld(VectorizedTask):
 
             if scale_constant != 0:
                 num_neighbs = jnp.where(num_neighbs == 0, 0, num_neighbs)
-                num_neighbs = jnp.where(num_neighbs == 1, 0.01 / 3, num_neighbs)
+                num_neighbs = jnp.where(num_neighbs == 1, 0.01/scale_constant, num_neighbs)
                 num_neighbs = jnp.where(num_neighbs == 2, 0.02 / scale_constant, num_neighbs)
                 num_neighbs = jnp.where(num_neighbs == 3, 0.03 / scale_constant, num_neighbs)
                 num_neighbs = jnp.where(num_neighbs > 3, 0, num_neighbs)
