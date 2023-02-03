@@ -70,7 +70,12 @@ def train(project_dir):
     eval_params = []
 
     if config["load_trained"]:
-        gens = [config["num_gens"]]
+        # find last saved model
+        models = len([name for name in os.listdir(project_dir) if os.path.isfile(name)])
+        last_gen = (len(models)-1)*config["eval_freq"]
+        print(last_gen)
+
+        gens = [last_gen]
     else:
         gens = list(range(config["num_gens"]))
 
