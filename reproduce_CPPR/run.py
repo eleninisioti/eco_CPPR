@@ -220,5 +220,5 @@ if __name__ == "__main__":
               "niches_scale": 2}
 
     #test()
-    #limited_parametric()
-    random()
+    limited_parametric()
+    #random()
