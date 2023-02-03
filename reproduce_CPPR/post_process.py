@@ -357,7 +357,7 @@ def heatmap(top_dir, x_feature, y_feature):
     np.random.seed(0)
     sns.set()
     train_trials = 3
-    current_gen = 450
+    current_gen = 1400
     project_dirs = [top_dir + "/" + el for el in os.listdir(top_dir) if os.path.isdir(top_dir + "/" + el) and "parametric" not in el and "test" not in el]
     data = {}
     metrics = ["efficiency", "sustainability", "following", "dispersal"]
