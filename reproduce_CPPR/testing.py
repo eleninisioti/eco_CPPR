@@ -123,6 +123,8 @@ def process_eval(total_eval_params, project_dir, current_gen):
                                     "following": following,
                                     "dispersal": dispersal}
 
+    print("saving ", project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl")
+
     with open(project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl", "wb") as f:
             pickle.dump(processed_results, f)
 
