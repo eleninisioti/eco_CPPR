@@ -71,7 +71,7 @@ def train(project_dir):
 
     if config["load_trained"]:
         # find last saved model
-        models = [name for name in os.listdir(project_dir + "/train/models") if os.path.isfile(name)]
+        models = [name for name in os.listdir(project_dir + "/train/models") if os.path.isfile(project_dir + "/train/models/" + name)]
         print(project_dir + "/train/models", models)
         last_gen = (len(models)-1)*config["eval_freq"]
         print(last_gen)

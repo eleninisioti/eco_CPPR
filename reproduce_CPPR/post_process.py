@@ -357,7 +357,7 @@ def heatmap(top_dir, x_feature, y_feature):
     np.random.seed(0)
     sns.set()
     train_trials = 3
-    current_gen = 1400
+
     project_dirs = [top_dir + "/" + el for el in os.listdir(top_dir) if os.path.isdir(top_dir + "/" + el) and "parametric" not in el and "test" not in el]
     data = {}
     metrics = ["efficiency", "sustainability", "following", "dispersal"]
@@ -375,11 +375,16 @@ def heatmap(top_dir, x_feature, y_feature):
             with open(random_project + "/eval/data/gen_0.pkl", "rb") as f:
                 random_results = pickle.load(f)
             for project in project_dirs:
+
                 with open(project + "/trial_0/config.yaml", "r") as f:
                     config = yaml.safe_load(f)
                 values = []
                 for trial in range(train_trials):
-                    with open(project + "/trial_" + str(trial) + "/eval/data/gen_" + str(current_gen) + ".pkl", "rb") as f:
+                    models = [name for name in os.listdir(project + "/trial_" + str(trial) + "/train/models") if os.path.isfile(project + "/trial_" + str(trial) + "/train/models/" + name)]
+                    print(project + "/trial_" + str(trial) + "/train/models")
+                    print(project + "/train/models", models)
+                    last_gen = (len(models) - 1) * config["eval_freq"]
+                    with open(project + "/trial_" + str(trial) + "/eval/data/gen_" + str(last_gen) + ".pkl", "rb") as f:
                         results = pickle.load(f)
                         value = results[metric][test][-1]
                         if not (test == "test_following" and (metric=="sustainability" or metric=="efficiency")):
