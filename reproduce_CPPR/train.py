@@ -69,7 +69,13 @@ def train(project_dir):
     keep_max_rewards = []
     eval_params = []
 
-    for gen in range(config["num_gens"]):
+    if config["load_trained"]:
+        gens = [config["num_gens"]]
+    else:
+        gens = list(range(config["num_gens"]))
+
+
+    for gen in gens:
 
         if gen%config["eval_freq"]==0:
             if config["load_trained"]:
@@ -139,7 +145,7 @@ def train(project_dir):
             eval_params.append(eval(params, config["nb_agents"], key, model, project_dir, config["agent_view"], gen))
             process_eval(eval_params, project_dir, gen)
 
-        if not config["load_trained"]:
+        if not config["load_trained"] and config["load_trained"]:
 
             params = selection(params,
                                config["nb_agents"],

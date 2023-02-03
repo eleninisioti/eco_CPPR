@@ -357,7 +357,7 @@ def heatmap(top_dir, x_feature, y_feature):
     np.random.seed(0)
     sns.set()
     train_trials = 3
-    current_gen = 1400
+    current_gen = 450
     project_dirs = [top_dir + "/" + el for el in os.listdir(top_dir) if os.path.isdir(top_dir + "/" + el) and "parametric" not in el and "test" not in el]
     data = {}
     metrics = ["efficiency", "sustainability", "following", "dispersal"]
@@ -368,6 +368,12 @@ def heatmap(top_dir, x_feature, y_feature):
                   "test_sustainability_high"]
     for test in test_types:
         for metric in metrics:
+            print(test, metric)
+
+            # load random data for normalization
+            random_project = "projects/3_2_2023/random/nb_agents_20num_gens_1eval_freq_50gen_length_500grid_width_160init_food_500agent_view_3regrowth_scale_0.002niches_scale_2no_train_Truegrid_length_380/trial_0"
+            with open(random_project + "/eval/data/gen_0.pkl", "rb") as f:
+                random_results = pickle.load(f)
             for project in project_dirs:
                 with open(project + "/trial_0/config.yaml", "r") as f:
                     config = yaml.safe_load(f)
@@ -375,14 +381,20 @@ def heatmap(top_dir, x_feature, y_feature):
                 for trial in range(train_trials):
                     with open(project + "/trial_" + str(trial) + "/eval/data/gen_" + str(current_gen) + ".pkl", "rb") as f:
                         results = pickle.load(f)
-                        values.append(results[metric][test][-1])
+                        value = results[metric][test][-1]
+                        if not (test == "test_following" and (metric=="sustainability" or metric=="efficiency")):
+                            value = value/ random_results[metric][test][-1]
+                            #print("normalizing with", random_results[metric][test][-1])
+
+                        values.append(value)
+                print(min(values), max(values))
                 data[config[x_feature], config[y_feature]] = np.mean(values)
 
             ser = pd.Series(list(data.values()),
                             index=pd.MultiIndex.from_tuples(data.keys()))
             df = ser.unstack().fillna(0)
             sns.heatmap(df,cmap="YlGnBu")
-            save_dir = top_dir + "/heatmaps/test_" + test + "_metric_" + metric
+            save_dir = top_dir + "/heatmaps_norm/test_" + test + "_metric_" + metric
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
                 plt.xlabel("Niches scale")

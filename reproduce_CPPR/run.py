@@ -48,7 +48,7 @@ def setup_project(config, exp_name):
 
     else:
 
-
+        project_dir += "/"
 
         for key, value in config.items():
             if key != "trial" and key!="load_trained":
@@ -166,6 +166,44 @@ def parametric():
                             elif mode == "server":
                                 create_jzscript(project_dir, user)
 
+def random():
+    """evaluating random population for normalizing statistics
+    """
+    config["load_trained"] = False
+    config["no_train"] = True
+    config["num_gens"] = 1
+    gen_length_values = [500]
+    nb_agents_values = [20]
+    world_size_values = [{"width": 160, "length": 380, "init_food": 500}]
+    niches_scale_values = [2]
+    regrowth_scale_values = [0.002]
+    n_trials = 1
+
+    for trial in range(n_trials):
+
+        for gen_length in gen_length_values:
+
+            for nb_agent in nb_agents_values:
+                for world_size in world_size_values:
+                    for niches_scale in niches_scale_values:
+                        for regrowth_scale in regrowth_scale_values:
+                            config["gen_length"] = gen_length
+                            config["nb_agents"] = nb_agent
+                            config["grid_length"] = world_size["length"]
+                            config["grid_width"] = world_size["width"]
+                            config["init_food"] = world_size["init_food"]
+                            config["niches_scale"] = niches_scale
+                            config["regrowth_scale"] = regrowth_scale
+                            config["trial"] = trial
+
+                            project_dir = setup_project(config, "random")
+
+                            if mode == "local":
+                                train(project_dir)
+
+                            elif mode == "server":
+                                create_jzscript(project_dir, user)
+
 
 if __name__ == "__main__":
     mode = sys.argv[1]  # choose between local and server
@@ -182,4 +220,5 @@ if __name__ == "__main__":
               "niches_scale": 2}
 
     #test()
-    limited_parametric()
+    #limited_parametric()
+    random()
