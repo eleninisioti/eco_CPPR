@@ -124,15 +124,15 @@ def limited_parametric():
                             project_dir = setup_project(config, "parametric")
 
                             if mode == "local":
-                                print("yo")
-                                #train(project_dir)
+                                #print("yo")
+                                train(project_dir)
 
                             elif mode == "server":
                                 create_jzscript(project_dir, user)
 
 def parametric():
     config["load_trained"] = True
-    config["num_gens"] = 2000
+    config["num_gens"] = 1400
     gen_length_values = [500, 1000]
     nb_agents_values = [20, 200, 600]
     world_size_values = [{"width": 160, "length": 380, "init_food": 500},
