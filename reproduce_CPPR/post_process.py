@@ -56,16 +56,28 @@ def compare_single_parameter(top_dir, param_compare):
                 f.write(el + "\n")
 
         # for each case project load and plot training results
+
+        """
         results = {}
         for case_project in case_projects:
             # last_gen = config[case_project]["num_gens"]
-            last_gen = 1400
             ntrials = 3
             eval_freq = 50
             total_frame = []
             for trial in range(ntrials):
                 trial_project = case_project + "/trial_" + str(trial)
+
+                models = [name for name in os.listdir(project + "/trial_" + str(trial) + "/train/models") if
+                          os.path.isfile(project + "/trial_" + str(trial) + "/train/models/" + name)]
+                print(project + "/trial_" + str(trial) + "/train/models")
+                print(project + "/train/models", models)
+                last_gen = (len(models) - 1) * config["eval_freq"]
+
+       
                 with open(trial_project + "/train/data/gen_" + str(last_gen) + ".pkl", "rb") as f:
+
+
+
                     trial_results = pickle.load(f)
                     # make dataframe
                     rewards = [float(el) for el in trial_results["max_rewards"]]
@@ -77,6 +89,7 @@ def compare_single_parameter(top_dir, param_compare):
                                                 'trial': trial
                                                 })
                     total_frame.append(trial_frame)
+               
             total_frame = pd.concat(total_frame)
 
             case_label = param_compare + "_" + str(configs[case_project][param_compare])
@@ -86,6 +99,8 @@ def compare_single_parameter(top_dir, param_compare):
             sns.lineplot(data=result,x="gen", y="max_rewards", label=case)
         plt.savefig(case_dir + "/max_rewards.png")
         plt.clf()
+
+        """
 
         # for each case project load and plot evaluation results
         """
@@ -114,10 +129,15 @@ def compare_single_parameter(top_dir, param_compare):
                 eval_results = {}
                 for case_project in case_projects:
                     #last_gen = config[case_project]["num_gens"]
-                    last_gen = 1400
+
+
                     ntrials = 3
                     total_frame = []
                     for trial in range(ntrials):
+                        models = [name for name in os.listdir(case_project + "/trial_" + str(trial) + "/train/models")
+                                  if
+                                  os.path.isfile(case_project + "/trial_" + str(trial) + "/train/models/" + name)]
+                        last_gen = (len(models) - 1) * config["eval_freq"]
                         trial_project = case_project + "/trial_" + str(trial)
                         with open(trial_project + "/eval/data/gen_" + str(last_gen) + ".pkl", "rb") as f:
                             trial_results = pickle.load(f)

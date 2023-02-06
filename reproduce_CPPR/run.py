@@ -171,7 +171,7 @@ def random():
     """
     config["load_trained"] = False
     config["no_train"] = True
-    config["num_gens"] = 1
+    config["num_gens"] = 100
     gen_length_values = [500]
     nb_agents_values = [20]
     world_size_values = [{"width": 160, "length": 380, "init_food": 500}]

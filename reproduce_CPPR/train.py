@@ -151,7 +151,7 @@ def train(project_dir):
             eval_params.append(eval(params, config["nb_agents"], key, model, project_dir, config["agent_view"], gen))
             process_eval(eval_params, project_dir, gen)
 
-        if not config["load_trained"] and config["load_trained"]:
+        if not config["load_trained"] and not config["no_train"]:
 
             params = selection(params,
                                config["nb_agents"],
