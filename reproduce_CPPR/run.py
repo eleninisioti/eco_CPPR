@@ -13,7 +13,7 @@ def setup_project(config, exp_name):
     today = str(now.day) + "_" + str(now.month) + "_" + str(now.year)
     if config["load_trained"]:
         if mode == "local":
-            top_dir = "projects/report/"
+            top_dir = "projects/server/report/"
         else:
             top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/report/"
 
@@ -220,5 +220,5 @@ if __name__ == "__main__":
               "niches_scale": 2}
 
     #test()
-    limited_parametric()
-    #random()
+    #limited_parametric()
+    random()

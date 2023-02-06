@@ -426,6 +426,6 @@ if __name__ == "__main__":
 
     # compare(top_dir)
     parameters = ["niches_scale", "regrowth_scale"]
-    #for param in parameters:
-        #compare_single_parameter(top_dir, param)
-    heatmap(top_dir, "regrowth_scale", "niches_scale")
+    for param in parameters:
+        compare_single_parameter(top_dir, param)
+    #heatmap(top_dir, "regrowth_scale", "niches_scale")
