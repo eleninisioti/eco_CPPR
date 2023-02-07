@@ -184,12 +184,12 @@ class Gridworld(VectorizedTask):
                 pos_food_x = jnp.concatenate(
                     (random.randint(next_key, (int(init_food / 4),), int(1 / 2 * SX) + N, (SX - 1 - N_wall)),
                      random.randint(next_key, (int(init_food / 4),), N_wall, int(1 / 2 * SX) - N),
-                     random.randint(next_key, (int(init_food / 4),), 1, (SX - 1)),
-                     random.randint(next_key, (int(init_food / 4),), 1, (SX - 1))))
+                     random.randint(next_key, (int(init_food / 4),), 1 +N_wall, (SX - 1-N_wall)),
+                     random.randint(next_key, (int(init_food / 4),), 1+N_wall, (SX - 1 -N_wall))))
 
                 next_key, key = random.split(key)
-                pos_food_y = jnp.concatenate((random.randint(next_key, (int(init_food / 4),), 1, SY - 1),
-                                              random.randint(next_key, (int(init_food / 4),), 1, SY - 1),
+                pos_food_y = jnp.concatenate((random.randint(next_key, (int(init_food / 4),), 1+N_wall, SY - 1 - N_wall),
+                                              random.randint(next_key, (int(init_food / 4),), 1+N_wall, SY - 1-N_wall),
                                               random.randint(next_key, (int(init_food / 4),),  int(1 / 2 * SY) + N,
                                                              (SY - 1 -N_wall)),
                                               random.randint(next_key, (int(init_food / 4),), N_wall, int(1 / 2 * SY) - N)))
