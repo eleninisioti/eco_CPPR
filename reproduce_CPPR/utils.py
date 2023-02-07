@@ -14,11 +14,71 @@ import moviepy.editor as mvp
 from moviepy.video.io.ffmpeg_writer import FFMPEG_VideoWriter
 from IPython.display import HTML, display, clear_output
 import numpy as np
+test_configs = {"test_foraging": {"grid_width": 100,
+                                  "grid_length": 100,
+                                  "nb_agents": 15,
+                                  "hard_coded": 0,
+                                  "gen_length": 300,
+                                  "init_food": 150,
+                                  "place_agent": False,
+                                  "place_resources": False,
+                                  "regrowth_scale": 0},
+
+                "test_exploration": {"grid_width": 100,
+                                     "grid_length": 100,
+                                     "nb_agents": 15,
+                                     "hard_coded": 0,
+                                     "gen_length": 300,
+                                     "init_food": 250,
+                                     "place_agent": True,
+                                     "place_resources": True,
+                                     "regrowth_scale": 0},
+
+                "test_following": {"grid_width": 100,
+                                   "grid_length": 100,
+                                   "nb_agents": 15,
+                                   "hard_coded": 10,
+                                   "gen_length": 300,
+                                   "init_food": 0,
+                                   "place_agent": False,
+                                   "place_resources": False,
+                                   "default_move": ([3] * 10 + [2] * 10 + [0] * 10 + [1] * 10) * 10,
+                                   "regrowth_scale": 0},
+
+                "test_sustainability_low": {"grid_width": 100,
+                                            "grid_length": 100,
+                                            "nb_agents": 20,
+                                            "hard_coded": 0,
+                                            "gen_length": 1000,
+                                            "init_food": 20,
+                                            "place_agent": False,
+                                            "place_resources": False,
+                                            "default_move": [],
+                                            "regrowth_scale": 2},
+
+                "test_sustainability_high": {"grid_width": 100,
+                                             "grid_length": 100,
+                                             "nb_agents": 20,
+                                             "hard_coded": 0,
+                                             "gen_length": 1000,
+                                             "init_food": 20,
+                                             "place_agent": False,
+                                             "place_resources": False,
+                                             "default_move": [],
+                                             "regrowth_scale": 1.5},
+                }
+
+
+
 """
 
 
-def create_jzscript(project_dir, user):
-    command = "python reproduce_CPPR/train.py " + project_dir
+def create_jzscript(project_dir, user, mode="eval"):
+    if mode == "train":
+        command = "python reproduce_CPPR/train.py " + project_dir
+    elif mode == "eval":
+        command = "python reproduce_CPPR/eval.py " + project_dir
+
     with open( project_dir + "/config.yaml", "r") as f:
         config = yaml.safe_load(f)
     now = datetime.datetime.now()

@@ -2,60 +2,37 @@ import sys
 import datetime
 import os
 import sys
+
 sys.path.append(os.getcwd())
 import yaml
 from reproduce_CPPR.train import train
+from reproduce_CPPR.eval import eval_pretrained
+
 from reproduce_CPPR.utils import create_jzscript
 import copy
+import pickle
+
 
 def setup_project(config, exp_name):
     now = datetime.datetime.now()
     today = str(now.day) + "_" + str(now.month) + "_" + str(now.year)
-    if config["load_trained"]:
-        if mode == "local":
-            top_dir = "projects/server/report/"
-        else:
-            top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/report/"
 
+    if mode == "local":
+        top_dir = "projects/"
     else:
-        if mode == "local":
-            top_dir = "projects/"
-        else:
-            top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/"
+        top_dir = "/gpfsscratch/rech/imi/" + user + "/CPPR_log/projects/"
     project_dir = top_dir + today + "/" + exp_name
     conf_test = copy.copy(config)
 
-    if config["load_trained"]:
-        # find all projects under dir
-        project_dirs = [el for el in os.listdir(project_dir) if os.path.isdir(project_dir + "/"+ el)]
-        for project in project_dirs:
-            with open(project_dir + "/" + project + "/trial_0/config.yaml", "r") as f:
-                config_current = yaml.safe_load(f)
-            if "load_trained" in conf_test.keys() and "load_trained" not in config_current.keys():
-                del conf_test["load_trained"]
-
-            x = {key: el  for key, el in conf_test.items() if key!= "trial"}
-            y = {key: el  for key, el in config_current.items() if key!= "trial"}
-            shared_items = {k: x[k] for k in x if k in y and x[k] != y[k]}
-            if not len(shared_items):
 
 
-                project_dir +=  "/" + project
-                break
-            else:
+    project_dir += "/"
 
-                print((shared_items))
-
-    else:
-
-        project_dir += "/"
-
-        for key, value in config.items():
-            if key != "trial" and key!="load_trained":
-                project_dir += key + "_" + str(value)
+    for key, value in config.items():
+        if key != "trial" and key != "load_trained":
+            project_dir += key + "_" + str(value)
 
     project_dir += "/trial_" + str(config["trial"])
-
 
     if not os.path.exists(project_dir + "/train/data"):
         os.makedirs(project_dir + "/train/data")
@@ -91,8 +68,9 @@ def test():
     if mode == "local":
         train(project_dir)
 
-    elif    mode == "server":
+    elif mode == "server":
         create_jzscript(project_dir, user)
+
 
 def limited_parametric():
     config["load_trained"] = True
@@ -124,11 +102,12 @@ def limited_parametric():
                             project_dir = setup_project(config, "parametric")
 
                             if mode == "local":
-                                #print("yo")
+                                # print("yo")
                                 train(project_dir)
 
                             elif mode == "server":
                                 create_jzscript(project_dir, user)
+
 
 def parametric():
     config["load_trained"] = True
@@ -136,7 +115,7 @@ def parametric():
     gen_length_values = [500, 1000]
     nb_agents_values = [20, 200, 600]
     world_size_values = [{"width": 160, "length": 380, "init_food": 500},
-                         {"width": int(160*2/3), "length": int(380*2/3), "init_food": int(500*2/3)}]
+                         {"width": int(160 * 2 / 3), "length": int(380 * 2 / 3), "init_food": int(500 * 2 / 3)}]
     niches_scale_values = [2, 20, 200]
     regrowth_scale_values = [0.002, 0.0005]
     n_trials = 3
@@ -165,6 +144,7 @@ def parametric():
 
                             elif mode == "server":
                                 create_jzscript(project_dir, user)
+
 
 def random():
     """evaluating random population for normalizing statistics
@@ -205,6 +185,24 @@ def random():
                                 create_jzscript(project_dir, user)
 
 
+def process_paper():
+    ##with open(project_dir + "/config.yaml", "r") as f:
+    #    config = pickle.safe_load(f)
+    config["trial"] = 0
+    config["agent_view"] = 7
+    config["num_gens"] = 1500
+    config["eval_freq"] = 50
+    config["nb_agents"] = 1000
+
+    project_dir = setup_project(config, "process_paper")
+
+    if mode == "local":
+        eval_pretrained(project_dir)
+
+    elif mode == "server":
+        create_jzscript(project_dir, user, mode="eval")
+
+
 if __name__ == "__main__":
     mode = sys.argv[1]  # choose between local and server
     user = sys.argv[2]
@@ -219,6 +217,6 @@ if __name__ == "__main__":
               "regrowth_scale": 0,
               "niches_scale": 2}
 
-    #test()
-    #limited_parametric()
-    random()
+    # test()
+    # limited_parametric()
+    process_paper()

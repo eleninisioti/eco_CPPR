@@ -10,19 +10,39 @@ import matplotlib.pyplot as plt
 import time
 import random as nj_random
 
-test_configs = {"test_foraging": {"grid_width": 100,
-                                  "grid_length": 100,
-                                  "nb_agents": 15,
-                                  "hard_coded": 0,
-                                  "gen_length": 300,
-                                  "init_food": 150,
-                                  "place_agent": False,
-                                  "place_resources": False,
-                                  "regrowth_scale": 0},
+test_configs = {"test_foraging_low": {"grid_width": 20,
+                                      "grid_length": 20,
+                                      "nb_agents": 1,
+                                      "hard_coded": 0,
+                                      "gen_length": 800,
+                                      "init_food": 20,
+                                      "place_agent": False,
+                                      "place_resources": False,
+                                      "regrowth_scale": 0},
+
+                "test_foraging_medium": {"grid_width": 50,
+                                         "grid_length": 50,
+                                         "nb_agents": 1,
+                                         "hard_coded": 0,
+                                         "gen_length": 300,
+                                         "init_food": 60,
+                                         "place_agent": False,
+                                         "place_resources": False,
+                                         "regrowth_scale": 0},
+
+                "test_foraging_high": {"grid_width": 50,
+                                       "grid_length": 50,
+                                       "nb_agents": 1,
+                                       "hard_coded": 0,
+                                       "gen_length": 300,
+                                       "init_food": 180,
+                                       "place_agent": False,
+                                       "place_resources": False,
+                                       "regrowth_scale": 0},
 
                 "test_exploration": {"grid_width": 100,
                                      "grid_length": 100,
-                                     "nb_agents": 15,
+                                     "nb_agents": 1,
                                      "hard_coded": 0,
                                      "gen_length": 300,
                                      "init_food": 250,
@@ -30,46 +50,11 @@ test_configs = {"test_foraging": {"grid_width": 100,
                                      "place_resources": True,
                                      "regrowth_scale": 0},
 
-                "test_following": {"grid_width": 100,
-                                   "grid_length": 100,
-                                   "nb_agents": 15,
-                                   "hard_coded": 10,
-                                   "gen_length": 300,
-                                   "init_food": 0,
-                                   "place_agent": False,
-                                   "place_resources": False,
-                                   "default_move": ([3] * 10 + [2] * 10 + [0] * 10 + [1] * 10) * 10,
-                                   "regrowth_scale": 0},
-
-                "test_sustainability_low": {"grid_width": 100,
-                                            "grid_length": 100,
-                                            "nb_agents": 20,
-                                            "hard_coded": 0,
-                                            "gen_length": 1000,
-                                            "init_food": 20,
-                                            "place_agent": False,
-                                            "place_resources": False,
-                                            "default_move": [],
-                                            "regrowth_scale": 2},
-
-                "test_sustainability_high": {"grid_width": 100,
-                                             "grid_length": 100,
-                                             "nb_agents": 20,
-                                             "hard_coded": 0,
-                                             "gen_length": 1000,
-                                             "init_food": 20,
-                                             "place_agent": False,
-                                             "place_resources": False,
-                                             "default_move": [],
-                                             "regrowth_scale": 1.5},
                 }
 
 
-
 def process_eval(total_eval_params, project_dir, current_gen):
-    #current_gen = len(total_eval_params)
-
-
+    # current_gen = len(total_eval_params)
 
     efficiency = {}
     sustainability = {}
@@ -88,7 +73,6 @@ def process_eval(total_eval_params, project_dir, current_gen):
             else:
                 sustainability[test_type].append(total_eval_params[gen][test_type]["sustainability"])
 
-
             if test_type not in following.keys():
                 following[test_type] = [total_eval_params[gen][test_type]["following"]]
             else:
@@ -101,7 +85,7 @@ def process_eval(total_eval_params, project_dir, current_gen):
 
         processed_results = {}
         for test_type in efficiency.keys():
-            fig, axs = plt.subplots(4,  figsize=(7, 12))
+            fig, axs = plt.subplots(4, figsize=(7, 12))
 
             axs[0].plot(range(len(efficiency[test_type])), efficiency[test_type])
             axs[0].set_ylabel("Efficiency")
@@ -118,15 +102,16 @@ def process_eval(total_eval_params, project_dir, current_gen):
             plt.savefig(project_dir + "/eval/" + test_type + "/media/gen_" + str(current_gen) + ".png")
             plt.clf()
 
-    processed_results= {"efficiency": efficiency,
-                                    "sustainability": sustainability,
-                                    "following": following,
-                                    "dispersal": dispersal}
+    processed_results = {"efficiency": efficiency,
+                         "sustainability": sustainability,
+                         "following": following,
+                         "dispersal": dispersal}
 
     print("saving ", project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl")
 
     with open(project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl", "wb") as f:
-            pickle.dump(processed_results, f)
+        pickle.dump(processed_results, f)
+
 
 def measure_following(agents, agent_view):
     group_following = 0
@@ -165,11 +150,10 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
     """ Test the behavior of trained agents on specific tasks.
     """
     print("------Evaluating offline------")
-    test_types = ["test_sustainability_low",
-                  "test_sustainability_high",
-                  "test_foraging",
-                  "test_exploration",
-                  "test_following"
+    test_types = ["test_foraging_low",
+                  "test_foraging_high",
+                  "test_foraging_medium",
+                  "test_exploration"
                   ]
     eval_trials = 10
     total_eval_metrics = {}
@@ -178,7 +162,6 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
     for test_type in test_types:
 
         eval_metrics = {"efficiency": {},
-                        "following": {},
                         "sustainability": {}}
         print("Test-bed: ", test_type)
         config = test_configs[test_type]
@@ -191,11 +174,12 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
         if not os.path.exists(test_dir + "/data"):
             os.makedirs(test_dir + "/data")
 
-        #ind_best[-config["nb_agents"]:]
-        random_subset = nj_random.choices(list(range(int(1/4*nb_train_agents), nb_train_agents)),
+        # ind_best[-config["nb_agents"]:]
+        random_subset = nj_random.choices(list(range(int(1 / 4 * nb_train_agents), nb_train_agents)),
                                           k=config["nb_agents"])
+        random_subset = nj_random.randrange(nb_train_agents)
 
-        params_test = params[random_subset, :]
+        params_test = params[[random_subset], :]
 
         env = Gridworld(max_steps=config["gen_length"] + 1,
                         SX=config["grid_length"],
@@ -252,7 +236,7 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                     positions_log["posy"].append(state.agents.posy)
 
                     # keep track of group properties
-                    if i % (int(config["gen_length"] / 5)) == 0:
+                    if i % (int(config["gen_length"] / 5)) == 0 and "following" in eval_metrics.keys():
                         group_following.append(measure_following(state.agents, agent_view))
                         group_dispersal.append(measure_dispersal(state.agents, agent_view))
 
@@ -282,12 +266,12 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                 sustainability.append(np.mean(sustain))
 
             print("Evaluation performance at this trial:", str(np.mean(efficiency)))
-            with open(trial_dir + "/gen_"  + str(current_gen) + "_positions.pkl", "wb") as f:
+            with open(trial_dir + "/gen_" + str(current_gen) + "_positions.pkl", "wb") as f:
                 pickle.dump(positions_log, f)
 
         eval_metrics["efficiency"] = np.mean(efficiency)
-        eval_metrics["following"] = np.mean(following)
-        eval_metrics["dispersal"] = np.mean(dispersal)
+        #eval_metrics["following"] = np.mean(following)
+        #eval_metrics["dispersal"] = np.mean(dispersal)
         eval_metrics["sustainability"] = np.mean(sustainability)
         total_eval_metrics[test_type] = eval_metrics
 
