@@ -101,6 +101,7 @@ class Gridworld(VectorizedTask):
                  SX=300,
                  SY=100,
                  init_food=0,
+                 params=None,
                  place_agent=False,
                  place_resources=False,
                  test: bool = False,
@@ -154,8 +155,8 @@ class Gridworld(VectorizedTask):
                 next_key, key = random.split(key)
 
             if self.place_resources:
-                N = 5
-                N_wall = 5
+                N = 0
+                N_wall = 0
 
                 pos_food_x = jnp.concatenate(
                     (random.randint(next_key, (int(init_food / 4),), int(1 / 2 * SX) + N, (SX - 1 - N_wall)),
@@ -179,27 +180,15 @@ class Gridworld(VectorizedTask):
                 next_key, key = random.split(key)
 
             grid = get_init_state_fn(key, SX, SY, posx, posy, pos_food_x, pos_food_y, niches_scale)
-            policy_states = self.model.reset_b(jnp.zeros(self.nb_agents, ))
 
-            params = jax.random.normal(
-                next_key,
-                (self.nb_agents, self.model.num_params,),
-            ) / 100
-
-            agents = AgentStates(posx=posx, posy=posy,
-                                 energy=self.max_ener * jnp.ones((self.nb_agents,)).at[0:5].set(0),
-                                 time_good_level=jnp.zeros((self.nb_agents,), dtype=jnp.uint16), params=params,
-                                 policy_states=policy_states,
-                                 time_alive=jnp.zeros((self.nb_agents,), dtype=jnp.uint16),
-                                 time_under_level=jnp.zeros((self.nb_agents,), dtype=jnp.uint16),
-                                 alive=jnp.ones((self.nb_agents,), dtype=jnp.uint16).at[0:2 * self.nb_agents // 3].set(
-                                     0))
             next_key, key = random.split(key)
 
+            """
             params = jax.random.normal(
                 next_key,
                 (self.nb_agents, self.model.num_params,),
             ) / 100
+            """
 
             policy_states = self.model.reset_b(jnp.zeros(self.nb_agents, ))
 

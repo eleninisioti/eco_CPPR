@@ -14,11 +14,12 @@ import time
 import random as nj_random
 
 ACTION_SIZE = 5
-SETTING = "energylevel"
+AGENT_VIEW = 7
+SETTING = "vanilla"
 
 test_configs = {"test_firstmove_low": {"grid_width": 30,
                                        "grid_length": 30,
-                                       "nb_agents": 1,
+                                       "nb_agents": 6,
                                        "hard_coded": 0,
                                        "gen_length": 800,
                                        "init_food": 10,
@@ -28,7 +29,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
 
                 "test_firstmove_medium": {"grid_width": 30,
                                           "grid_length": 30,
-                                          "nb_agents": 1,
+                                          "nb_agents": 6,
                                           "hard_coded": 0,
                                           "gen_length": 800,
                                           "init_food": 20,
@@ -38,7 +39,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
 
                 "test_firstmove_high": {"grid_width": 30,
                                         "grid_length": 30,
-                                        "nb_agents": 1,
+                                        "nb_agents": 6,
                                         "hard_coded": 0,
                                         "gen_length": 800,
                                         "init_food": 60,
@@ -89,7 +90,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
                 }
 
 def process_eval(total_eval_params, project_dir, current_gen):
-    save_dir = project_dir + "/eval/data_" + setting
+    save_dir = project_dir + "/eval/data/" + SETTING
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -210,26 +211,29 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                   ]
     eval_trials = 10
     random_agents = 50
+    window = 20
     total_eval_metrics = {}
     nj_random.seed(1)
     eval_data = []
     eval_columns = ["gen", "test_type", "eval_trial", "agent_idx", "efficiency", "sustainability"]
 
     for random_agent in range(random_agents):
-        agent_idx = nj_random.randrange(nb_train_agents)
 
-        params_test = params[[agent_idx], :]
 
         for test_type in test_types:
 
             print("Test-bed: ", test_type)
             config = test_configs[test_type]
 
-            test_dir = project_dir + "/eval/" + test_type + SETTING + "_agents_" + str(config["nb_agents"])
+            agent_idx = nj_random.randrange(nb_train_agents)
+            agent_idxs = [agent_idx - el for el in range(config["nb_agents"])]
+            params_test = params[agent_idxs, :]
+
+            test_dir = project_dir + "/eval/" + test_type + "/" + SETTING + "_agents_" + str(config["nb_agents"])
             if not os.path.exists(test_dir + "/media"):
                 os.makedirs(test_dir + "/media")
 
-            test_dir = project_dir + "/eval/" + test_type + SETTING + "_agents_" + str(config["nb_agents"])
+            test_dir = project_dir + "/eval/" + test_type + "/" + SETTING + "_agents_" + str(config["nb_agents"])
             if not os.path.exists(test_dir + "/data"):
                 os.makedirs(test_dir + "/data")
 
@@ -242,7 +246,8 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                 nb_agents=config["nb_agents"],
                 regrowth_scale=config["regrowth_scale"],
                 place_agent=config["place_agent"],
-                place_resources=config["place_resources"])
+                place_resources=config["place_resources"],
+                params =params_test)
 
             for trial in range(eval_trials):
 
@@ -268,6 +273,8 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                     group_rewards = []
                     first_rewards = [None for el in range(config["nb_agents"])]
                     start = time.time()
+                    within_resources = 0
+                    consumed_within_resources = 0
 
                     for i in range(config["gen_length"]):
 
@@ -285,10 +292,35 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
 
                         state, reward, energy = env.step(state)
 
+                        if i%window==0:
+                            counter_window = 0
+                            resources = state.state[:, :, 1]
+                            resources_x, resources_y = np.nonzero(resources)
+                            for idx, posx in enumerate(state.agents.posx):
+                                posy = state.agents.posy[idx]
+                                within_resource = False
+                                already_consumed = False
+                                for resource_idx in range(len(resources_x)):
+                                    if ((np.abs(posx - resources_x[resource_idx])) < AGENT_VIEW) and ((np.abs(posy - resources_y[resource_idx])) < AGENT_VIEW):
+                                        within_resource = True
+                                        break
+
+
+                            if within_resource:
+                                within_resources += 1
+
+
+                        if 1 in reward and not already_consumed:
+                            consumed_within_resources += 1
+                            already_consumed = True
+
+
+
                         positions_log["posx"].append(state.agents.posx)
                         positions_log["posy"].append(state.agents.posy)
 
                         group_rewards.append(jnp.sum(reward[config["hard_coded"]:]))
+
 
                         first_times = np.where(reward > 0, i, None)
 
@@ -303,11 +335,13 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
 
                     print(str(config["gen_length"]), " steps took ", str(time.time() - start))
                     vid.close()
+
                     # adding to dataframe
                     sustain = [el for el in first_rewards if el != None]
                     if not len(sustain):
-                        sustain = [0]
-                    eval_data.append([current_gen, test_type, trial, agent_idx, np.mean(group_rewards), np.mean(sustain)])
+                        sustain = [config["gen_length"]]
+                    print(within_resources/config["gen_length"], consumed_within_resources/within_resources)
+                    eval_data.append([current_gen, test_type, trial, agent_idx, np.mean(group_rewards), np.mean(sustain), within_resources/config["gen_length"], consumed_within_resources/within_resources])
 
                     os.rename(video_dir + "/gen_" + str(current_gen) + ".mp4",
                               video_dir + "/gen_" + str(current_gen) + "_sustain_" + str(np.mean(sustain)) + ".mp4")
