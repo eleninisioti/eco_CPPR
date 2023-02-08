@@ -17,7 +17,7 @@ ACTION_SIZE = 5
 
 test_configs = {"test_firstmove_low": {"grid_width": 30,
                                        "grid_length": 30,
-                                       "nb_agents": 1,
+                                       "nb_agents": 2,
                                        "hard_coded": 0,
                                        "gen_length": 800,
                                        "init_food": 10,
@@ -27,7 +27,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
 
                 "test_firstmove_medium": {"grid_width": 30,
                                           "grid_length": 30,
-                                          "nb_agents": 1,
+                                          "nb_agents": 2,
                                           "hard_coded": 0,
                                           "gen_length": 800,
                                           "init_food": 20,
@@ -37,7 +37,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
 
                 "test_firstmove_high": {"grid_width": 30,
                                         "grid_length": 30,
-                                        "nb_agents": 1,
+                                        "nb_agents": 2,
                                         "hard_coded": 0,
                                         "gen_length": 800,
                                         "init_food": 60,
@@ -212,24 +212,25 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
     eval_data = []
     eval_columns = ["gen", "test_type", "eval_trial", "agent_idx", "efficiency", "sustainability"]
 
-    for test_type in test_types:
+    for random_agent in range(random_agents):
+        agent_idx = nj_random.randrange(nb_train_agents)
 
-        print("Test-bed: ", test_type)
-        config = test_configs[test_type]
+        params_test = params[[agent_idx], :]
 
-        test_dir = project_dir + "/eval/" + test_type
-        if not os.path.exists(test_dir + "/media"):
-            os.makedirs(test_dir + "/media")
+        for test_type in test_types:
 
-        test_dir = project_dir + "/eval/" + test_type
-        if not os.path.exists(test_dir + "/data"):
-            os.makedirs(test_dir + "/data")
+            print("Test-bed: ", test_type)
+            config = test_configs[test_type]
 
-        for random_agent in range(random_agents):
+            test_dir = project_dir + "/eval/" + test_type + "_agents_" + str(config["nb_agents"])
+            if not os.path.exists(test_dir + "/media"):
+                os.makedirs(test_dir + "/media")
 
-            agent_idx = nj_random.randrange(nb_train_agents)
+            test_dir = project_dir + "/eval/" + test_type + "_agents_" + str(config["nb_agents"])
+            if not os.path.exists(test_dir + "/data"):
+                os.makedirs(test_dir + "/data")
 
-            params_test = params[[agent_idx ], :]
+
 
             env = Gridworld(
                 SX=config["grid_length"],

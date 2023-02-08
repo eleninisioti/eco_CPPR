@@ -23,8 +23,10 @@ def post_process(project):
 
     # plot histogram for each agent
     agents = list(set(results["agent_idx"]))
+    results_gen = results.loc[results["gen"] == gen]
+
     for agent_idx in agents:
-        results_agent = results.loc[results["agent_idx"] == agent_idx]
+        results_agent = results_gen.loc[results_gen["agent_idx"] == agent_idx]
 
         bar_heights = []
         bar_errors = []
