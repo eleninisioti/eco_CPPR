@@ -104,6 +104,7 @@ class Gridworld(VectorizedTask):
                  params=None,
                  place_agent=False,
                  place_resources=False,
+                 reproduction_on=True,
                  test: bool = False,
                  energy_decay=0.05,
                  max_age: int = 1000,
@@ -155,8 +156,8 @@ class Gridworld(VectorizedTask):
                 next_key, key = random.split(key)
 
             if self.place_resources:
-                N = 0
-                N_wall = 0
+                N = 5
+                N_wall = 5
 
                 pos_food_x = jnp.concatenate(
                     (random.randint(next_key, (int(init_food / 4),), int(1 / 2 * SX) + N, (SX - 1 - N_wall)),
@@ -198,8 +199,9 @@ class Gridworld(VectorizedTask):
                                  policy_states=policy_states,
                                  time_alive=jnp.zeros((self.nb_agents,), dtype=jnp.uint16),
                                  time_under_level=jnp.zeros((self.nb_agents,), dtype=jnp.uint16),
-                                 alive=jnp.ones((self.nb_agents,), dtype=jnp.uint16).at[0:2 * self.nb_agents // 3].set(
-                                     0))
+                                 alive=jnp.ones((self.nb_agents,), dtype=jnp.uint16).at[0:5].set(
+                                     0)
+                                 )
 
             return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((self.nb_agents, 5)),
                          rewards=jnp.zeros((self.nb_agents, 1)), agents=agents,
@@ -228,10 +230,11 @@ class Gridworld(VectorizedTask):
             next_key, key = random.split(key)
             params = params
             # new agents params with mutate , and also take pos of parents
-            params = params.at[empty_spots].set(
-                params[reproducer_spots] + 0.02 * jax.random.normal(next_key, (5, params.shape[1])))
-            posx = posx.at[empty_spots].set(posx[reproducer_spots])
-            posy = posy.at[empty_spots].set(posy[reproducer_spots])
+            if reproduction_on:
+                params = params.at[empty_spots].set(
+                    params[reproducer_spots] + 0.02 * jax.random.normal(next_key, (5, params.shape[1])))
+                posx = posx.at[empty_spots].set(posx[reproducer_spots])
+                posy = posy.at[empty_spots].set(posy[reproducer_spots])
 
             # new agents energy set at max
 

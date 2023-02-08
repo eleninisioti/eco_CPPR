@@ -15,13 +15,13 @@ import random as nj_random
 
 ACTION_SIZE = 5
 AGENT_VIEW = 7
-SETTING = "vanilla"
+SETTING = "reproduction"
 
 test_configs = {"test_firstmove_low": {"grid_width": 30,
                                        "grid_length": 30,
                                        "nb_agents": 6,
                                        "hard_coded": 0,
-                                       "gen_length": 800,
+                                       "gen_length": 500,
                                        "init_food": 10,
                                        "place_agent": True,
                                        "place_resources": True,
@@ -31,7 +31,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
                                           "grid_length": 30,
                                           "nb_agents": 6,
                                           "hard_coded": 0,
-                                          "gen_length": 800,
+                                          "gen_length": 500,
                                           "init_food": 20,
                                           "place_agent": True,
                                           "place_resources": True,
@@ -41,7 +41,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
                                         "grid_length": 30,
                                         "nb_agents": 6,
                                         "hard_coded": 0,
-                                        "gen_length": 800,
+                                        "gen_length": 500,
                                         "init_food": 60,
                                         "place_agent": True,
                                         "place_resources": True,
@@ -206,16 +206,21 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
     """ Test the behavior of trained agents on specific tasks.
     """
     print("------Evaluating offline------")
-    test_types = ["test_firstmove_high"
+    test_types = ["test_firstmove_high", "test_firstmove_low", "test_firstmove_medium"
 
                   ]
     eval_trials = 10
     random_agents = 50
     window = 20
+    if SETTING == "no-reproduction":
+        reproduction_on = False
+    else:
+        reproduction_on = True
     total_eval_metrics = {}
     nj_random.seed(1)
     eval_data = []
-    eval_columns = ["gen", "test_type", "eval_trial", "agent_idx", "efficiency", "sustainability"]
+    eval_columns = ["gen", "test_type", "eval_trial", "agent_idx", "efficiency", "sustainability",
+                    "resource_closeness", "resources_sustain", "agent_closeness", "agent_sustain",  "energy", "lifetime_consumption"]
 
     for random_agent in range(random_agents):
 
@@ -244,14 +249,17 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                 SY=config["grid_width"],
                 init_food=config["init_food"],
                 nb_agents=config["nb_agents"],
+                reproduction_on=reproduction_on,
                 regrowth_scale=config["regrowth_scale"],
                 place_agent=config["place_agent"],
                 place_resources=config["place_resources"],
-                params =params_test)
+                params =params_test,
+                time_death=config["gen_length"] +1,
+            time_reproduce=20)
 
             for trial in range(eval_trials):
 
-                next_key, key = random.split(key)
+                next_key, _ = random.split(key)
                 state = env.reset(next_key)
 
                 policy_states = model.reset(state)
@@ -275,10 +283,14 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                     start = time.time()
                     within_resources = 0
                     consumed_within_resources = 0
+                    agent_rewards = []
+                    agent_energy_levels = []
+                    within_agents = 0
+                    consumed_within_agents = 0
 
                     for i in range(config["gen_length"]):
 
-                        next_key, key = random.split(key)
+                        #next_key, _ = random.split(key)
 
                         #actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
                         #actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit*50, axis=-1), ACTION_SIZE)
@@ -291,9 +303,10 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                         #cur_state, state, reward, done = env.step(state, actions)
 
                         state, reward, energy = env.step(state)
+                        agent_rewards.append(float(reward[len(reward)-1]))
+                        agent_energy_levels.append(float(energy[len(reward)-1]))
 
-                        if i%window==0:
-                            counter_window = 0
+                        if i%window == 0:
                             resources = state.state[:, :, 1]
                             resources_x, resources_y = np.nonzero(resources)
                             for idx, posx in enumerate(state.agents.posx):
@@ -309,9 +322,29 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                             if within_resource:
                                 within_resources += 1
 
+                            # detect if other agents around
+                            other_agents_x = state.agents.posx
+                            other_agents_y = state.agents.posy
+                            for idx, posx in enumerate(state.agents.posx):
+                                posy = state.agents.posy[idx]
+                                within_agent = False
+                                already_consumed_agent = False
+                                for other_agent_idx in range(len(other_agents_x)):
+                                    if ((np.abs(posx - other_agents_x[other_agent_idx])) < AGENT_VIEW) and (
+                                            (np.abs(posy - other_agents_y[other_agent_idx])) < AGENT_VIEW):
+                                        within_agent = True
+                                        break
 
-                        if 1 in reward and not already_consumed:
+                            if within_agent:
+                                within_agents += 1
+
+
+                        if reward[len(reward)-1]==1 and not already_consumed:
                             consumed_within_resources += 1
+                            already_consumed = True
+
+                        if reward[len(reward)-1]==1 and not already_consumed_agent:
+                            consumed_within_agents += 1
                             already_consumed = True
 
 
@@ -336,12 +369,25 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
                     print(str(config["gen_length"]), " steps took ", str(time.time() - start))
                     vid.close()
 
+                    hist_energy = {}
+                    unique_energies = set(agent_energy_levels)
+                    for u in unique_energies:
+                        hist_energy[u] = 0
+                        for timestep, energy in enumerate(agent_energy_levels):
+                            if u == energy:
+                                hist_energy[u] += agent_rewards[timestep]
+
                     # adding to dataframe
                     sustain = [el for el in first_rewards if el != None]
                     if not len(sustain):
                         sustain = [config["gen_length"]]
                     print(within_resources/config["gen_length"], consumed_within_resources/within_resources)
-                    eval_data.append([current_gen, test_type, trial, agent_idx, np.mean(group_rewards), np.mean(sustain), within_resources/config["gen_length"], consumed_within_resources/within_resources])
+                    for key_energy, value in hist_energy.items():
+                        eval_data.append([current_gen, test_type, trial, agent_idx, np.mean(group_rewards),
+                                          np.mean(sustain), within_resources/config["gen_length"],
+                                          consumed_within_resources/within_resources,
+                                          within_agents/config["gen_length"], consumed_within_agents/within_agents,
+                                          key_energy, value])
 
                     os.rename(video_dir + "/gen_" + str(current_gen) + ".mp4",
                               video_dir + "/gen_" + str(current_gen) + "_sustain_" + str(np.mean(sustain)) + ".mp4")

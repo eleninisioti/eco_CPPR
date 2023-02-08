@@ -39,7 +39,7 @@ def eval_pretrained(project_dir):
                                 hidden_layers=[8])
 
     for gen in gens:
-        next_key, key = random.split(key)
+        #next_key, key = random.split(key)
 
 
         params, obs_param = load_model(project_dir + "/train/models", "gen_" + str(gen) + ".npz")
