@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from continuous_eval.gridworld_eleni import Gridworld
+from continuous_eval.gridworld import Gridworld
 from jax import random
 from continuous_eval.utils import VideoWriter
 import jax
@@ -14,10 +14,11 @@ import time
 import random as nj_random
 
 ACTION_SIZE = 5
+SETTING = "energylevel"
 
 test_configs = {"test_firstmove_low": {"grid_width": 30,
                                        "grid_length": 30,
-                                       "nb_agents": 2,
+                                       "nb_agents": 1,
                                        "hard_coded": 0,
                                        "gen_length": 800,
                                        "init_food": 10,
@@ -27,7 +28,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
 
                 "test_firstmove_medium": {"grid_width": 30,
                                           "grid_length": 30,
-                                          "nb_agents": 2,
+                                          "nb_agents": 1,
                                           "hard_coded": 0,
                                           "gen_length": 800,
                                           "init_food": 20,
@@ -37,7 +38,7 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
 
                 "test_firstmove_high": {"grid_width": 30,
                                         "grid_length": 30,
-                                        "nb_agents": 2,
+                                        "nb_agents": 1,
                                         "hard_coded": 0,
                                         "gen_length": 800,
                                         "init_food": 60,
@@ -88,8 +89,11 @@ test_configs = {"test_firstmove_low": {"grid_width": 30,
                 }
 
 def process_eval(total_eval_params, project_dir, current_gen):
+    save_dir = project_dir + "/eval/data_" + setting
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-    with open(project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl", "wb") as f:
+    with open(save_dir + "/gen_" + str(current_gen) + ".pkl", "wb") as f:
         pickle.dump(total_eval_params, f)
 
 def process_eval_old(total_eval_params, project_dir, current_gen):
@@ -158,9 +162,9 @@ def process_eval_old(total_eval_params, project_dir, current_gen):
                          "norm_efficiency": norm_efficiency
                          }
 
-    print("saving ", project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl")
+    print("saving ", project_dir + "/eval/data_reproduction/gen_" + str(current_gen) + ".pkl")
 
-    with open(project_dir + "/eval/data/gen_" + str(current_gen) + ".pkl", "wb") as f:
+    with open(project_dir + "/eval/data_reproduction/gen_" + str(current_gen) + ".pkl", "wb") as f:
         pickle.dump(processed_results, f)
 
 
@@ -201,9 +205,8 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
     """ Test the behavior of trained agents on specific tasks.
     """
     print("------Evaluating offline------")
-    test_types = ["test_firstmove_low",
-                  "test_firstmove_high",
-                  "test_firstmove_medium"
+    test_types = ["test_firstmove_high"
+
                   ]
     eval_trials = 10
     random_agents = 50
@@ -222,11 +225,11 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
             print("Test-bed: ", test_type)
             config = test_configs[test_type]
 
-            test_dir = project_dir + "/eval/" + test_type + "_agents_" + str(config["nb_agents"])
+            test_dir = project_dir + "/eval/" + test_type + SETTING + "_agents_" + str(config["nb_agents"])
             if not os.path.exists(test_dir + "/media"):
                 os.makedirs(test_dir + "/media")
 
-            test_dir = project_dir + "/eval/" + test_type + "_agents_" + str(config["nb_agents"])
+            test_dir = project_dir + "/eval/" + test_type + SETTING + "_agents_" + str(config["nb_agents"])
             if not os.path.exists(test_dir + "/data"):
                 os.makedirs(test_dir + "/data")
 
@@ -270,15 +273,17 @@ def eval(params, nb_train_agents, key, model, project_dir, agent_view, current_g
 
                         next_key, key = random.split(key)
 
-                        actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
-                        actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit*50, axis=-1), ACTION_SIZE)
+                        #actions_logit, policy_states = model.get_actions(state, params_test, policy_states)
+                        #actions = jax.nn.one_hot(jax.random.categorical(next_key, actions_logit*50, axis=-1), ACTION_SIZE)
 
                         # the first 10 agents always go right
-                        for hard_agent in range(config["hard_coded"]):
-                            hard_actions = jax.nn.one_hot([config["default_move"][i]], ACTION_SIZE)
-                            actions = actions.at[hard_agent].set(hard_actions[0])
+                        #for hard_agent in range(config["hard_coded"]):
+                        #    hard_actions = jax.nn.one_hot([config["default_move"][i]], ACTION_SIZE)
+                        #    actions = actions.at[hard_agent].set(hard_actions[0])
 
-                        cur_state, state, reward, done = env.step(state, actions)
+                        #cur_state, state, reward, done = env.step(state, actions)
+
+                        state, reward, energy = env.step(state)
 
                         positions_log["posx"].append(state.agents.posx)
                         positions_log["posy"].append(state.agents.posy)

@@ -140,32 +140,36 @@ class Gridworld(VectorizedTask):
         def reset_fn(key):
             if self.place_agent:
                 next_key, key = random.split(key)
-                posx = random.randint(next_key, (nb_agents,), int(2 / 5 * SX), int(3 / 5 * SX))
+                # posx = random.randint(next_key, (nb_agents,), int(2 / 5 * SX), int(3 / 5 * SX))
+                posx = random.randint(next_key, (nb_agents,), int(1 / 2 * SX), int(1 / 2 * SX) + 1)
                 next_key, key = random.split(key)
-                posy = random.randint(next_key, (nb_agents,), int(2 / 5 * SX), int(3 / 5 * SX))
+                # posy = random.randint(next_key, (nb_agents,), int(2 / 5 * SX), int(3 / 5 * SX))
+                posy = random.randint(next_key, (nb_agents,), int(1 / 2 * SY), int(1 / 2 * SY) + 1)
                 next_key, key = random.split(key)
-                #agents = AgentStates(posx=posx, posy=posy)
             else:
                 next_key, key = random.split(key)
                 posx = random.randint(next_key, (nb_agents,), 1, (SX - 1))
                 next_key, key = random.split(key)
                 posy = random.randint(next_key, (nb_agents,), 1, (SY - 1))
                 next_key, key = random.split(key)
-                #agents = AgentStates(posx=posx, posy=posy)
 
             if self.place_resources:
+                N = 5
+                N_wall = 5
 
                 pos_food_x = jnp.concatenate(
-                    (random.randint(next_key, (int(init_food / 4),), 4 * (int(SX / 5)), (SX - 1)),
-                     random.randint(next_key, (int(init_food / 4),), 1, 1 * (int(SX / 5))),
-                     random.randint(next_key, (int(init_food / 4),), 1, (SX - 1)),
-                     random.randint(next_key, (int(init_food / 4),), 1, (SX - 1))))
+                    (random.randint(next_key, (int(init_food / 4),), int(1 / 2 * SX) + N, (SX - 1 - N_wall)),
+                     random.randint(next_key, (int(init_food / 4),), N_wall, int(1 / 2 * SX) - N),
+                     random.randint(next_key, (int(init_food / 4),), 1 + N_wall, (SX - 1 - N_wall)),
+                     random.randint(next_key, (int(init_food / 4),), 1 + N_wall, (SX - 1 - N_wall))))
+
                 next_key, key = random.split(key)
-                pos_food_y = jnp.concatenate((random.randint(next_key, (int(init_food / 4),), 1, SY - 1),
-                                              random.randint(next_key, (int(init_food / 4),), 1, SY - 1),
-                                              random.randint(next_key, (int(init_food / 4),), 4 * (int(SY / 5)),
-                                                             (SY - 1)),
-                                              random.randint(next_key, (int(init_food / 4),), 1, 1 * (int(SY / 5)))))
+                pos_food_y = jnp.concatenate(
+                    (random.randint(next_key, (int(init_food / 4),), 1 + N_wall, SY - 1 - N_wall),
+                     random.randint(next_key, (int(init_food / 4),), 1 + N_wall, SY - 1 - N_wall),
+                     random.randint(next_key, (int(init_food / 4),), int(1 / 2 * SY) + N,
+                                    (SY - 1 - N_wall)),
+                     random.randint(next_key, (int(init_food / 4),), N_wall, int(1 / 2 * SY) - N)))
                 next_key, key = random.split(key)
 
             else:
@@ -366,7 +370,7 @@ class Gridworld(VectorizedTask):
             state = jax.lax.cond(
                 done, lambda x: reset_fn(state.key), lambda x: x, cur_state)
 
-            return state,rewards
+            return state, rewards, energy
 
         self._step_fn = jax.jit(step_fn)
 
