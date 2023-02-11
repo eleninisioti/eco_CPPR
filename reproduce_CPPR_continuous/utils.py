@@ -17,38 +17,7 @@ import numpy as np
 """
 
 
-def create_jzscript(project_dir, user):
-    command = "python reproduce_CPPR/train.py " + project_dir
-    with open( project_dir + "/config.yaml", "r") as f:
-        config = yaml.safe_load(f)
-    now = datetime.datetime.now()
-    scripts_dir = "jz_scripts/" + str(now.day) + "_" + str(now.month) + "_" + str(now.year)
-    if not os.path.exists(scripts_dir):
-        os.makedirs(scripts_dir)
 
-    script_file = scripts_dir + "/"
-    for key, value in config.items():
-        script_file += key + "_" + str(value)
-
-    script_path = script_file + ".sh"
-
-    with open(script_path, "w") as fh:
-        fh.writelines("#!/bin/bash\n")
-        fh.writelines("#SBATCH -A imi@v100\n")
-        fh.writelines("#SBATCH --ntasks=1\n")
-        fh.writelines("#SBATCH --cpus-per-task=8 \n")
-        fh.writelines("#SBATCH --gres=gpu:1\n")
-        fh.writelines("#SBATCH --hint=nomultithread\n")
-        #fh.writelines("#SBATCH --qos=qos_gpu-dev\n")
-        fh.writelines("#SBATCH -J " + script_file + "\n")
-        fh.writelines("#SBATCH -t 01:59:00\n")
-        scratch_dir = "/gpfsscratch/rech/imi/"+ user + "/CPPR_log/jz_logs"
-        if not os.path.exists(scratch_dir):
-            os.makedirs(scratch_dir)
-        fh.writelines("#SBATCH --output=" + scratch_dir + "/%j.out\n")
-        fh.writelines("#SBATCH --error=" + scratch_dir + "/%j.err\n")
-        fh.writelines("module load tensorflow-gpu/py3/2.9.1\n")
-        fh.writelines(command)
 
 
 def merge_videos(directory, num_gens):
