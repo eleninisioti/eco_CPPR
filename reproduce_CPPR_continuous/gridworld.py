@@ -29,7 +29,6 @@ from reproduce_CPPR_continuous.agent import metaRNNPolicyState_bcppr
 from evojax.policy.base import PolicyState
 from evojax.task.base import TaskState
 from evojax.task.base import VectorizedTask
-
 @dataclass
 class AgentStates(object):
     posx: jnp.uint16
@@ -41,6 +40,8 @@ class AgentStates(object):
     time_alive: jnp.uint16
     time_under_level: jnp.uint16
     alive: jnp.int8
+    nb_food:jnp.ndarray
+    nb_offspring:jnp.uint16
 
 
 @dataclass
@@ -109,7 +110,7 @@ class Gridworld(VectorizedTask):
                  regrowth_scale=0.002,
                  niches_scale=200,
                  spontaneous_regrow=1 / 200000,
-
+                 wall_kill=True,
                  ):
         self.obs_shape = (AGENT_VIEW, AGENT_VIEW, 3)
         # self.obs_shape=11*5*4
@@ -161,7 +162,10 @@ class Gridworld(VectorizedTask):
                                  time_alive=jnp.zeros((self.nb_agents,), dtype=jnp.uint16),
                                  time_under_level=jnp.zeros((self.nb_agents,), dtype=jnp.uint16),
                                  alive=jnp.ones((self.nb_agents,), dtype=jnp.uint16).at[0:2 * self.nb_agents // 3].set(
-                                     0))
+                                     0),
+                                 nb_food=jnp.zeros((self.nb_agents,)),
+                                 nb_offspring=jnp.zeros((self.nb_agents,), dtype=jnp.uint16)
+                                )
 
             return State(state=grid, obs=get_obs_vector(grid, posx, posy), last_actions=jnp.zeros((self.nb_agents, 5)),
                          rewards=jnp.zeros((self.nb_agents, 1)), agents=agents,
@@ -169,7 +173,7 @@ class Gridworld(VectorizedTask):
 
         self._reset_fn = jax.jit(reset_fn)
 
-        def reproduce(params, posx, posy, energy, time_good_level, key, policy_states, time_alive, alive):
+        def reproduce(params, posx, posy, energy, time_good_level, key, policy_states, time_alive, alive,nb_food,nb_offspring):
             # use agent 0 to 4 as a dump always dead if no dead put in there to be sure not overiding the alive ones
             # but maybe better to just make sure that there are 5 places available by checking if 5 dead (but this way may be better if we augment the 5)
             dead = 1 - alive
@@ -206,6 +210,9 @@ class Gridworld(VectorizedTask):
 
             alive = alive.at[empty_spots].set(1 * reproducer[reproducer_spots])
             time_alive = time_alive.at[empty_spots].set(0)
+            nb_food=nb_food.at[empty_spots].set(0)
+            nb_offspring=nb_offspring.at[empty_spots].set(0)
+            nb_offspring=nb_offspring.at[reproducer_spots].add((empty_spots>4))
             time_good_level = time_good_level.at[empty_spots].set(0)
             policy_states = metaRNNPolicyState_bcppr(
                 lstm_h=policy_states.lstm_h.at[empty_spots].set(jnp.zeros(policy_states.lstm_h.shape[1])),
@@ -220,7 +227,7 @@ class Gridworld(VectorizedTask):
             # kill the dump
             alive = alive.at[0:5].set(0)
 
-            return (params, posx, posy, energy, time_good_level, policy_states, time_alive, alive)
+            return (params, posx, posy, energy, time_good_level, policy_states, time_alive, alive,nb_food,nb_offspring)
 
         def step_fn(state):
             key = state.key
@@ -243,6 +250,8 @@ class Gridworld(VectorizedTask):
 
             # wall
             hit_wall = state.state[posx, posy, 2] > 0
+            if(wall_kill):
+                alive=jnp.where(hit_wall,0,alive)
             posx = jnp.where(hit_wall, state.agents.posx, posx)
             posy = jnp.where(hit_wall, state.agents.posy, posy)
 
@@ -257,6 +266,8 @@ class Gridworld(VectorizedTask):
             rewards = (alive > 0) * (grid[posx, posy, 1] > 0) * (1 / (grid[posx, posy, 0] + 1e-10))
             grid = grid.at[posx, posy, 1].add(-1 * (alive > 0))
             grid = grid.at[:, :, 1].set(jnp.clip(grid[:, :, 1], 0, 1))
+            
+            nb_food=state.agents.nb_food+rewards
 
             # regrow
 
@@ -299,10 +310,10 @@ class Gridworld(VectorizedTask):
             # compute reproducer and go through the function only if there is one
             reproducer = jnp.where(state.agents.time_good_level > self.time_reproduce, 1, 0)
             next_key, key = random.split(key)
-            params, posx, posy, energy, time_good_level, policy_states, time_alive, alive = jax.lax.cond(
-                reproducer.sum() > 0, reproduce, lambda y, z, a, b, c, d, e, f, g: (y, z, a, b, c, e, f, g), *(
+            params, posx, posy, energy, time_good_level, policy_states, time_alive, alive,nb_food,nb_offspring = jax.lax.cond(
+                reproducer.sum() > 0, reproduce, lambda y, z, a, b, c, d, e, f, g,h,i: (y, z, a, b, c, e, f, g,h,i), *(
                 state.agents.params, posx, posy, energy, time_good_level, next_key, state.agents.policy_states,
-                time_alive, alive))
+                time_alive, alive,nb_food,state.agents.nb_offspring))
 
             time_under_level = jnp.where(energy < 0, state.agents.time_under_level + 1, 0)
             alive = jnp.where(jnp.logical_or(time_alive > self.max_age, time_under_level > self.time_death), 0, alive)
@@ -313,7 +324,8 @@ class Gridworld(VectorizedTask):
                               rewards=jnp.expand_dims(rewards, -1),
                               agents=AgentStates(posx=posx, posy=posy, energy=energy, time_good_level=time_good_level,
                                                  params=params, policy_states=policy_states,
-                                                 time_alive=time_alive, time_under_level=time_under_level, alive=alive),
+                                                 time_alive=time_alive, time_under_level=time_under_level, alive=alive,
+                                                nb_food=nb_food,nb_offspring=nb_offspring),
                               steps=steps, key=key)
             # keep it in case we let agent several trials
             state = jax.lax.cond(
@@ -330,6 +342,5 @@ class Gridworld(VectorizedTask):
              state: State,
              ) -> Tuple[State, jnp.ndarray, jnp.ndarray]:
         return self._step_fn(state)
-
 
 

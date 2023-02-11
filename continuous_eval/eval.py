@@ -6,7 +6,7 @@ sys.path.append(os.getcwd())
 from continuous_eval.agent import MetaRnnPolicy_bcppr
 from continuous_eval.gridworld import Gridworld
 
-from reproduce_CPPR.utils import VideoWriter
+from reproduce_CPPR_continuous.utils import VideoWriter
 import jax
 import jax.numpy as jnp
 from jax import random
