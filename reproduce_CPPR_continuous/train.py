@@ -261,8 +261,19 @@ def train(project_dir):
 
                 if (gen % config["eval_freq"] == 0):
                     rgb_im = state.state[:, :, :3]
-                    #rgb_im = np.repeat(rgb_im, 2, axis=0)
-                    #rgb_im = np.repeat(rgb_im, 2, axis=1)
+
+                    rgb_im=jnp.clip(rgb_im,0,1)
+                  
+                
+                     #white green and black
+                    rgb_im=jnp.clip(rgb_im+jnp.expand_dims(state.state[:,:,1],axis=-1),0,1)
+                    rgb_im=rgb_im.at[:,:,1].set(0)
+                    rgb_im= 1-rgb_im
+                    rgb_im=rgb_im-jnp.expand_dims(state.state[:,:,0],axis=-1)
+                    
+                    rgb_im = np.repeat(rgb_im, 2, axis=0)
+                    rgb_im = np.repeat(rgb_im, 2, axis=1)
+                    
                     vid.add(rgb_im)
 
                     mean_accumulated_rewards = mean_accumulated_rewards + (reward*state.agents.alive).sum()/(state.agents.alive.sum()+1e-10)
